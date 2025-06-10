@@ -1,9 +1,9 @@
 export default function DistributionTable({ pdf, cdf, name, precision, rCode }) {
   return (
-    <table class="distribution-table">
+    <table className="distribution-table">
       <thead>
         <tr>
-          <th colspan="4">{name}</th>
+          <th colSpan="4">{name}</th>
         </tr>
         <tr>
           <th />

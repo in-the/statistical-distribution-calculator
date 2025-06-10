@@ -136,7 +136,7 @@ const PoissonSettings = {
 function DistributionSelect({ settings, setSettings }) {
   return (
     <div className="distribution-select">
-      <label for="settings">Choose Distribution: </label>
+      <label htmlFor="settings">Choose Distribution: </label>
       <select
         id="settings"
         name="settings"
@@ -151,7 +151,7 @@ function DistributionSelect({ settings, setSettings }) {
 }
 
 function App() {
-  const [settings, setSettings] = useState("binomial");
+  const [settings, setSettings] = useState("poisson");
 
   return (
     <div className="App">

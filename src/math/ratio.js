@@ -1,15 +1,16 @@
-// By James Sinclair 2020, https://jrsinclair.com/articles/2020/sick-of-the-jokes-write-your-own-arbitrary-precision-javascript-math-library/
+// file: ratio.js
 /* global BigInt */
 const PRECISION = 100; // Precision for converting numbers to fractions. The higher this number, the slower everything gets.
 
-function bigIntPow(x, y) {
-  if (BigInt(y) === BigInt(0)) return BigInt(1);
-  let z = BigInt(x);
-  for (let i = 1; i < y; i++) {
-    z = z * BigInt(x);
-  }
-  return z;
-}
+// THIS IS SO MALICIOUS!
+// function bigIntPow(x, y) {
+//   if (BigInt(y) === BigInt(0)) return BigInt(1);
+//   let z = BigInt(x);
+//   for (let i = 1; i < y; i++) {
+//     z = z * BigInt(x);
+//   }
+//   return z;
+// }
 
 const leftPad = (n, s) => [...new Array(Math.max(0, n - s.length))].map(() => "0").join("") + s;
 
@@ -245,6 +246,7 @@ export default class Ratio {
    * @param {bigint} x The base to take the nth root of.
    * @param {bigint} n The nth root to calculate.
    */
+  // BigInt ** BigInt overflows, nthRoot() DOES NOT WORK
   static nthRoot(x, n) {
     if (x === BigInt(1)) return new Ratio(BigInt(1), BigInt(1));
     if (x === BigInt(0)) return new Ratio(BigInt(0), BigInt(1));
@@ -255,23 +257,15 @@ export default class Ratio {
 
     const NUM_ITERATIONS = 3;
     return [...new Array(NUM_ITERATIONS)].reduce((r) => {
-      // x = ((n-1)*x + (num / Math.pow(x, n-1))) * (1/n);
       return simplify(
-        (n - BigInt(1)) * bigIntPow(r.numerator, n) + x * bigIntPow(r.denominator, n),
-        n * r.denominator * bigIntPow(r.numerator, n - BigInt(1))
+        n - BigInt(1) * r.numerator ** n + x * r.denominator ** n,
+        n * r.denominator * r.numerator ** (n - BigInt(1))
       );
     }, initialEstimate);
   }
 
   abs() {
-    if (this.numerator > 0) {
-      if (this.denominator > 0) {
-        return this;
-      } return new Ratio(this.numerator, -this.denominator);
-    }
-    if (this.denominator > 0) {
-      return new Ratio(-this.numerator, this.denominator);
-    } return new Ratio(-this.numerator, -this.denominator);
+    return new Ratio(abs(this.numerator), abs(this.denominator));
   }
 
   /**
@@ -279,6 +273,7 @@ export default class Ratio {
    *
    * @param {Ratio} n The value to take this ratio to the power of.
    */
+  // BigInt ** BigInt overflows, pow(n) DOES NOT WORK
   pow(n) {
     const { numerator: nNumerator, denominator: nDenominator } = simplify(
       n.numerator,
@@ -286,9 +281,9 @@ export default class Ratio {
     );
     const { numerator, denominator } = simplify(this.numerator, this.denominator);
     if (nNumerator < 0) return this.invert().pow(n.abs());
-    if (nNumerator === BigInt(0)) return Ratio.ONE;
+    if (nNumerator === BigInt(0)) return Ratio.one;
     if (nDenominator === BigInt(1)) {
-      return new Ratio(bigIntPow(numerator, nNumerator), bigIntPow(denominator, nNumerator));
+      return new Ratio(numerator ** nNumerator, denominator ** nNumerator);
     }
     if (numerator < 0 && nDenominator !== BigInt(1)) {
       return Ratio.infinity;
@@ -297,7 +292,7 @@ export default class Ratio {
     const { numerator: newN, denominator: newD } = Ratio.nthRoot(numerator, nDenominator).divideBy(
       Ratio.nthRoot(denominator, nDenominator)
     );
-    return new Ratio(bigIntPow(newN, nNumerator), bigIntPow(newD, nNumerator));
+    return new Ratio(newN ** nNumerator, newD ** nNumerator);
   }
 
   isInfinity() {

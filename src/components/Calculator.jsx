@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import DistributionTable from "./DistributionTable";
 import DiscreteGraph from "./DiscreteGraph";
 import { positiveInteger } from "App";
+import Ratio from "math/ratio";
 
 export const PRECISION = 5;
 
@@ -23,14 +24,14 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
           {settings.parameters.map((p, index) => (
             <tr key={index}>
               <td>
-                <label for={p.name}>{p.description}</label>
+                <label htmlFor={p.name}>{p.description}</label>
               </td>
               <td>
                 <input
                   name={p.name}
                   id={p.name}
                   value={parameters[index]}
-                  autocomplete="off"
+                  autoComplete="off"
                   onChange={(e) =>
                     setParameters([
                       ...parameters.slice(0, index),
@@ -63,7 +64,7 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
                 name="FX"
                 id="FX"
                 value={cumulativeProbability}
-                autocomplete="off"
+                autoComplete="off"
                 onChange={(e) => setCumulativeProbability(e.target.value)}
               />
             </td>
@@ -107,7 +108,7 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
                 name="k"
                 id="k"
                 value={observationCount}
-                autocomplete="off"
+                autoComplete="off"
                 onChange={(e) => setObservationCount(e.target.value)}
               />
             </td>
@@ -154,7 +155,9 @@ export default function DiscreteDistributionCalculator({ settings }) {
 
   useEffect(() => {
     setParameters(settings.parameters.map((parameter) => parameter.defaultValue));
-    setDistribution(new settings.distribution(...settings.parameters.map((parameter) => parameter.defaultValue)));
+    setDistribution(
+      new settings.distribution(...settings.parameters.map((parameter) => parameter.defaultValue))
+    );
     setPdf(settings.defaultPdf);
     setCdf(settings.defaultCdf);
   }, [settings]);
@@ -222,6 +225,7 @@ export default function DiscreteDistributionCalculator({ settings }) {
 
   return (
     <div>
+      {/* {console.log(Ratio.E.pow(Ratio.fromNumber(1.1)))} */}
       <ParameterInput {...{ settings, calculate, getQuantile, getObservations }} />
       <div className="output-container">
         <DistributionTable

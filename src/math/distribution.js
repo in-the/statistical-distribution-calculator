@@ -32,6 +32,7 @@ class DiscreteDistribution {
     const cdf = [];
     let cumulative = Ratio.ZERO;
     for (let x = min; Number(cumulative.toFixed(PRECISION)) !== 1; x++) {
+      console.log(cumulative);
       const p = probabilityFunction(x);
       pdf.push(p);
       cumulative = cumulative.add(p);
@@ -179,7 +180,8 @@ export class Poisson extends DiscreteDistribution {
     super();
     this.lambda = Ratio.fromNumber(lambda);
     this.lambdaKArray = [Ratio.ONE];
-    this.eNegLambda = Ratio.E.pow(this.lambda.times(Ratio.fromInt(-1)))
+    // This power is not exact, estimate with floating point exponentiation
+    this.eNegLambda = Ratio.fromNumber(Ratio.E.toFixed(20) ** this.lambda.times(Ratio.fromInt(-1)).toFixed(20));
   }
 
   lambdaK(k) {

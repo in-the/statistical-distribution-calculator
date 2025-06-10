@@ -367,12 +367,23 @@ export default class Ratio {
     if (this.isInfinity()) {
       return this.toValue().toString();
     }
-    const intPart = this.numerator / this.denominator;
+    let intPart = this.numerator / this.denominator;
     if (n === 0) {
       return `${intPart}`;
     }
-    const decimalPart =
-      (this.numerator * exp10(Number(n))) / this.denominator - intPart * exp10(Number(n));
+    // const decimalPart =
+    // (this.numerator * exp10(Number(n))) / this.denominator - intPart * exp10(Number(n));
+    const decimalPartExtra =
+      (this.numerator * exp10(n + 1)) / this.denominator - intPart * exp10(n + 1);
+    let decimalPart = decimalPartExtra / BigInt(10);
+    if (decimalPartExtra % BigInt(10) > BigInt(4)) {
+      if (decimalPart === BigInt("9".repeat(n))) {
+        intPart += BigInt(1);
+        decimalPart = 0;
+      } else {
+        decimalPart++;
+      }
+    }
     return `${intPart}.${leftPad(Number(n), "" + decimalPart)}`;
   }
 }

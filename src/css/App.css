@@ -1,19 +1,70 @@
-.distribution-table,
+.App {
+  margin: 2rem;
+}
+
+h1 {
+  text-align: center;
+}
+
+table,
+table td,
+table th {
+  border-collapse: collapse;
+}
+
+.input-container {
+  margin: 1rem;
+}
+
+.input-table {
+  text-align: left;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.input-table td {
+  padding-bottom: 0.5rem;
+}
+
+.input-table .separate td {
+  border-top: solid thin #aaa;
+  padding-top: 0.5rem;
+}
+
+.observations {
+  display: flex;
+  justify-content: center;
+  text-wrap: balance;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.observations .legend {
+  text-wrap: nowrap;
+}
+
+.observations * {
+  flex-shrink: 1;
+}
+
 .distribution-table td,
 .distribution-table th {
   border: thin #aaa solid;
-  border-collapse: collapse;
 }
 
 .distribution-table th {
   background-color: #ffffcc;
+  word-wrap: break-word;
+  max-width: 10rem;
 }
 
 .distribution-table td {
   background-color: #ccffcc;
+  text-align: center;
 }
 .output-container {
   display: flex;
+  align-items: flex-start;
 }
 
 .graph-container {

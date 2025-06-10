@@ -1,4 +1,4 @@
-export default function DistributionTable({ pdf, cdf, name, precision }) {
+export default function DistributionTable({ pdf, cdf, name, precision, rCode }) {
   return (
     <table class="distribution-table">
       <thead>
@@ -30,6 +30,12 @@ export default function DistributionTable({ pdf, cdf, name, precision }) {
           <th>
             Pr(<var>X</var> {">"} <var>x</var>)
           </th>
+        </tr>
+        <tr>
+          <th>R</th>
+          <th>{rCode.pdf}</th>
+          <th>{rCode.cdf}</th>
+          <th>{rCode.cdfReverse}</th>
         </tr>
       </thead>
       <tbody>

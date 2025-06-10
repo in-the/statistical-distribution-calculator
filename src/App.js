@@ -1,7 +1,5 @@
 import BinomialCalculator from "components/BinomialCalculator";
 import "css/App.css";
-import { Binomial } from "math/distribution";
-import Ratio from "math/ratio";
 
 function App() {
   return (

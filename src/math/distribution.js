@@ -1,64 +1,43 @@
-import { combination } from "./math";
+import { PRECISION } from "components/Calculator";
+import { combination, factorial } from "./math";
 import Ratio from "math/ratio";
 
-/**
- * @param {function(int x => Ratio)} probabilityFunction P(X = x)
- * @param {int} max
- * @param {int} min
- * @returns
- */
-function distribution(probabilityFunction, max, min = 0) {
-  const pdf = [];
-  const cdf = [];
-  let cumulative = Ratio.ZERO;
-  for (let x = 0; x <= max; x++) {
-    const p = probabilityFunction(x);
-    pdf.push(p);
-    cumulative = cumulative.add(p);
-    cdf.push(cumulative);
-  }
-  return [pdf, cdf];
-}
-
-export class Binomial {
+class DiscreteDistribution {
   /**
-   * @param {int} size
-   * @param {float} prob
-   * @requires 0 <= x <= size
-   * @requires 0 <= prob <= 1
+   * @param {function(int x => Ratio)} probabilityFunction P(X = x)
+   * @param {int} max
+   * @param {int} min
+   * @returns
    */
-  constructor(size, prob) {
-    this.size = size;
-    this.prob = Ratio.fromNumber(prob);
-    this.px = [Ratio.ONE];
-    this.cpx = [Ratio.ONE];
-    let px = Ratio.ONE;
-    const cp = Ratio.ONE.subtract(this.prob);
-    let cpx = Ratio.ONE;
-    for (let i = 1; i <= size; i++) {
-      px = px.times(this.prob);
-      this.px.push(px);
-      cpx = cpx.times(cp);
-      this.cpx.push(cpx);
+  distributionSetRange(probabilityFunction, max, min = 0) {
+    const pdf = [];
+    const cdf = [];
+    let cumulative = Ratio.ZERO;
+    for (let x = min; x <= max; x++) {
+      const p = probabilityFunction(x);
+      pdf.push(p);
+      cumulative = cumulative.add(p);
+      cdf.push(cumulative);
     }
+    return [pdf, cdf];
   }
 
   /**
-   * @param {int} x
-   * @returns {Ratio} P(X = x)
+   * @param {function(int x => Ratio)} probabilityFunction P(X = x)
+   * @param {int} min
+   * @returns
    */
-  probability(x) {
-    return new Ratio(combination(this.size, x)).times(this.px[x]).times(this.cpx[this.size - x]);
-  }
-
-  /**
-   * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
-   */
-  setDistribution() {
-    [this.pdfDistribution, this.cdfDistribution] = distribution(
-      (x) => this.probability(x),
-      this.size
-    );
+  distributionDynamicRange(probabilityFunction, min = 0) {
+    const pdf = [];
+    const cdf = [];
+    let cumulative = Ratio.ZERO;
+    for (let x = min; Number(cumulative.toFixed(PRECISION)) !== 1; x++) {
+      const p = probabilityFunction(x);
+      pdf.push(p);
+      cumulative = cumulative.add(p);
+      cdf.push(cumulative);
+    }
+    return [pdf, cdf];
   }
 
   /**
@@ -96,13 +75,12 @@ export class Binomial {
     this.quantile = (cumulativeProbability) => {
       const cumulative = Ratio.fromNumber(cumulativeProbability);
       let q = 0;
-      while (q <= this.size) {
-        if (this.cdfDistribution[q].gt(cumulative)) {
-          break;
+      while (true) {
+        if (this.cdfDistribution[q].gt(cumulative) || q === this.cdfDistribution.length) {
+          return q;
         }
         q++;
       }
-      return q;
     };
     return this.quantile(cumulativeProbability);
   }
@@ -117,6 +95,49 @@ export class Binomial {
       observations.push(this.quantile(Math.random()));
     }
     return observations;
+  }
+}
+
+export class Binomial extends DiscreteDistribution {
+  /**
+   * @param {int} size
+   * @param {float} prob
+   * @requires 0 <= x <= size
+   * @requires 0 <= prob <= 1
+   */
+  constructor(size, prob) {
+    super();
+    this.size = size;
+    this.prob = Ratio.fromNumber(prob);
+    this.px = [Ratio.ONE];
+    this.cpx = [Ratio.ONE];
+    let px = Ratio.ONE;
+    const cp = Ratio.ONE.subtract(this.prob);
+    let cpx = Ratio.ONE;
+    for (let i = 1; i <= size; i++) {
+      px = px.times(this.prob);
+      this.px.push(px);
+      cpx = cpx.times(cp);
+      this.cpx.push(cpx);
+    }
+  }
+
+  /**
+   * @param {int} x
+   * @returns {Ratio} P(X = x)
+   */
+  probability(x) {
+    return new Ratio(combination(this.size, x)).times(this.px[x]).times(this.cpx[this.size - x]);
+  }
+
+  /**
+   * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
+   */
+  setDistribution() {
+    [this.pdfDistribution, this.cdfDistribution] = this.distributionSetRange(
+      (x) => this.probability(x),
+      this.size
+    );
   }
 
   // /**
@@ -145,4 +166,43 @@ export class Binomial {
   //   const probRatio = Ratio.fromNumber(prob);
   //   return distribution((x) => Binomial.probabiblity(x, size, probRatio), size);
   // }
+}
+
+export class Poisson extends DiscreteDistribution {
+  /**
+   * @param {int} size
+   * @param {float} prob
+   * @requires 0 <= x <= size
+   * @requires 0 <= prob <= 1
+   */
+  constructor(lambda) {
+    super();
+    this.lambda = Ratio.fromNumber(lambda);
+    this.lambdaKArray = [Ratio.ONE];
+    this.eNegLambda = Ratio.E.pow(this.lambda.times(Ratio.fromInt(-1)))
+  }
+
+  lambdaK(k) {
+    if (this.lambdaKArray.length <= k) {
+      this.lambdaKArray.push(this.lambdaK(k-1).times(this.lambda))
+    }
+    return this.lambdaKArray[k];
+  }
+
+  /**
+   * @param {int} x
+   * @returns {Ratio} P(X = x)
+   */
+  probability(x) {
+    return this.lambdaK(x).times(this.eNegLambda).divideBy(Ratio.fromInt(factorial(x)));
+  }
+
+  /**
+   * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
+   */
+  setDistribution() {
+    [this.pdfDistribution, this.cdfDistribution] = this.distributionDynamicRange(
+      (x) => this.probability(x)
+    );
+  }
 }

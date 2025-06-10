@@ -1,57 +1,59 @@
-import { Binomial } from "math/distribution";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import DistributionTable from "./DistributionTable";
 import DiscreteGraph from "./DiscreteGraph";
+import { positiveInteger } from "App";
 
-const PRECISION = 5;
+export const PRECISION = 5;
 
-function BinomialInput({ calculate, getQuantile, getObservations }) {
-  const [size, setSize] = useState("11");
-  const [prob, setProb] = useState("0.6");
+function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
+  const [parameters, setParameters] = useState([]);
   const [cumulativeProbability, setCumulativeProbability] = useState();
   const [quantile, setQuantile] = useState();
   const [quantileCode, setQuantileCode] = useState();
   const [observationCount, setObservationCount] = useState(10);
   const [observationCode, setObservationCode] = useState();
   const [observations, setObservations] = useState([]);
+
+  useEffect(() => setParameters(settings.parameters.map((p) => p.defaultValue)), [settings]);
+
   return (
     <div className="input-container">
       <table className="input-table">
         <tbody>
-          <tr>
-            <td>
-              <label for="size">
-                Number of trials, <var>n</var>:
-              </label>
-            </td>
-            <td>
-              <input name="size" id="size" value={size} onChange={(e) => setSize(e.target.value)} />
-            </td>
-            <td>
-              (<var>n</var> an integer {">"} 0)
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <label for="prob">
-                Probability of success, <var>p</var>:
-              </label>
-            </td>
-            <td>
-              <input name="prob" id="prob" value={prob} onChange={(e) => setProb(e.target.value)} />
-            </td>
-            <td>
-              (0 {"<"} <var>p</var> {"<"} 1)
-            </td>
-            <td>
-              <input
-                type="button"
-                value="Calculate"
-                name="calculateButton"
-                onClick={() => calculate(Number(size), Number(prob))}
-              />
-            </td>
-          </tr>
+          {settings.parameters.map((p, index) => (
+            <tr key={index}>
+              <td>
+                <label for={p.name}>{p.description}</label>
+              </td>
+              <td>
+                <input
+                  name={p.name}
+                  id={p.name}
+                  value={parameters[index]}
+                  autocomplete="off"
+                  onChange={(e) =>
+                    setParameters([
+                      ...parameters.slice(0, index),
+                      e.target.value,
+                      ...parameters.slice(index + 1),
+                    ])
+                  }
+                />
+              </td>
+              <td>{p.domain}</td>
+              {index === settings.parameters.length - 1 && (
+                <td>
+                  <input
+                    type="button"
+                    value="Calculate"
+                    name="calculateButton"
+                    onClick={() => calculate(parameters)}
+                  />
+                </td>
+              )}
+            </tr>
+          ))}
+
           <tr className="separate">
             <td>
               Cumulative probability, F(<var>X</var>)
@@ -61,6 +63,7 @@ function BinomialInput({ calculate, getQuantile, getObservations }) {
                 name="FX"
                 id="FX"
                 value={cumulativeProbability}
+                autocomplete="off"
                 onChange={(e) => setCumulativeProbability(e.target.value)}
               />
             </td>
@@ -73,13 +76,18 @@ function BinomialInput({ calculate, getQuantile, getObservations }) {
                 value="Get quantile"
                 name="quantileButton"
                 onClick={() => {
-                  calculate(Number(size), Number(prob), (newDistribution) => {
-                    const quantile = getQuantile(newDistribution, Number(cumulativeProbability));
+                  calculate(parameters, (newDistribution) => {
+                    const quantile = getQuantile(
+                      newDistribution,
+                      Number(Number(cumulativeProbability))
+                    );
                     if (quantile === false) {
                       return;
                     }
                     setQuantile(quantile);
-                    setQuantileCode(`qbinom(${cumulativeProbability}, ${size}, ${prob})`);
+                    setQuantileCode(
+                      settings.rCode(parameters).quantile(Number(cumulativeProbability))
+                    );
                   });
                 }}
               />
@@ -91,12 +99,15 @@ function BinomialInput({ calculate, getQuantile, getObservations }) {
             <td>{quantile}</td>
           </tr>
           <tr>
-            <td>Number of observations, k</td>
+            <td>
+              Number of observations, <var>k</var>
+            </td>
             <td>
               <input
                 name="k"
                 id="k"
                 value={observationCount}
+                autocomplete="off"
                 onChange={(e) => setObservationCount(e.target.value)}
               />
             </td>
@@ -109,13 +120,13 @@ function BinomialInput({ calculate, getQuantile, getObservations }) {
                 value="Generate observations"
                 name="generateRandomButton"
                 onClick={() => {
-                  calculate(Number(size), Number(prob), (newDistribution) => {
+                  calculate(parameters, (newDistribution) => {
                     const observations = getObservations(newDistribution, Number(observationCount));
                     if (observations === false) {
                       return;
                     }
                     setObservations(observations);
-                    setObservationCode(`rbinom(${observationCount}, ${size}, ${prob})`);
+                    setObservationCode(settings.rCode(parameters).observations(observationCount));
                   });
                 }}
               />
@@ -135,62 +146,40 @@ function BinomialInput({ calculate, getQuantile, getObservations }) {
   );
 }
 
-export default function BinomialCalculator() {
-  const [size, setSize] = useState("11");
-  const [prob, setProb] = useState("0.6");
-  const [distribution, setDistribution] = useState(new Binomial(11, 0.6));
-  const [pdf, setPdf] = useState([
-    "0.00004",
-    "0.00069",
-    "0.00519",
-    "0.02336",
-    "0.07007",
-    "0.14715",
-    "0.22072",
-    "0.23649",
-    "0.17737",
-    "0.08868",
-    "0.02661",
-    "0.00363",
-  ]);
-  const [cdf, setCdf] = useState([
-    "0.00004",
-    "0.00073",
-    "0.00592",
-    "0.02928",
-    "0.09935",
-    "0.24650",
-    "0.46723",
-    "0.70372",
-    "0.88108",
-    "0.96977",
-    "0.99637",
-    "1.00000",
-  ]);
+export default function DiscreteDistributionCalculator({ settings }) {
+  const [parameters, setParameters] = useState([]);
+  const [distribution, setDistribution] = useState();
+  const [pdf, setPdf] = useState([]);
+  const [cdf, setCdf] = useState([]);
+
+  useEffect(() => {
+    setParameters(settings.parameters.map((parameter) => parameter.defaultValue));
+    setDistribution(new settings.distribution(...settings.parameters.map((parameter) => parameter.defaultValue)));
+    setPdf(settings.defaultPdf);
+    setCdf(settings.defaultCdf);
+  }, [settings]);
 
   /**
    * @param {int} newSize Checks newSize is an integer > 0
    * @param {float} newProb Checks 0 <= newProb <= 1
    */
-  function calculate(newSize, newProb, after) {
-    if (newSize === size && newProb === prob) {
+  function calculate(newParameters, after = () => {}) {
+    if (parameters.every((parameter, i) => parameter === newParameters[i])) {
       after(distribution);
       return;
     }
-    if (isNaN(newSize) || newSize === Infinity || newSize % 1 || newSize < 0) {
-      alert("n must be a positive integer");
-      return;
-    }
-    if (isNaN(newProb) || isNaN(parseFloat(newProb)) || newProb < 0 || newProb > 1) {
-      alert("p must be in range (0, 1)");
-      return;
+    for (let i = 0; i < newParameters.length; i++) {
+      if (!settings.parameters[i].validation(newParameters[i], settings.parameters[i].symbol)) {
+        return;
+      }
     }
 
-    setSize(newSize);
-    setProb(newProb);
+    newParameters = newParameters.map((parameter) => Number(parameter));
+    setParameters(newParameters);
+
     // const [pdf, cdf] = Binomial.distribution(newSize, newProb);
 
-    const newDistribution = new Binomial(newSize, newProb);
+    const newDistribution = new settings.distribution(...newParameters);
     setDistribution(newDistribution);
 
     // I'd like to call these after setDistribution finishes updating, instead of having to pass newDistribution manually
@@ -220,13 +209,12 @@ export default function BinomialCalculator() {
   }
 
   /**
-   * @param {Binomial} distribution 
-   * @param {int} count 
+   * @param {Binomial} distribution
+   * @param {int} count
    * @returns {array[int]} Array of <count> random observations from distribution
    */
   function getObservations(distribution, count) {
-    if (isNaN(count) || count === Infinity || count % 1 || count < 0) {
-      alert("k must be a positive integer");
+    if (!positiveInteger(count, "k")) {
       return false;
     }
     return distribution.observe(count);
@@ -234,24 +222,20 @@ export default function BinomialCalculator() {
 
   return (
     <div>
-      <BinomialInput {...{ calculate, getQuantile, getObservations }} />
+      <ParameterInput {...{ settings, calculate, getQuantile, getObservations }} />
       <div className="output-container">
         <DistributionTable
           {...{
             pdf,
             cdf,
-            name: `Binomial distribution (n=${size}, p=${prob})`,
+            name: settings.name(parameters),
             precision: PRECISION,
-            rCode: {
-              pdf: `dbinom(x, ${size}, ${prob})`,
-              cdf: `pbinom(x, ${size}, ${prob})`,
-              cdfReverse: `pbinom(x, ${size}, ${prob}, lower.tail=FALSE)`,
-            },
+            rCode: settings.rCode(parameters),
           }}
         />
         <div className="graph-container">
-          <DiscreteGraph distribution={pdf} title="Binomial PDF" label="P(X = x)" />
-          <DiscreteGraph distribution={cdf} title="Binomial CDF" label="P(X ≤ x)" />
+          <DiscreteGraph distribution={pdf} title={`${settings.title} PDF`} label="P(X = x)" />
+          <DiscreteGraph distribution={cdf} title={`${settings.title} CDF`} label="P(X ≤ x)" />
         </div>
       </div>
     </div>

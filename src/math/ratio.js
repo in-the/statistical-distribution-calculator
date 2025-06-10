@@ -111,6 +111,8 @@ function exp10(n) {
 export default class Ratio {
   static ZERO = Ratio.fromInt(0);
   static ONE = Ratio.fromInt(1);
+  static E = new Ratio(BigInt(52061284670617417), BigInt(19152276311294112));
+  static PI = new Ratio(BigInt(1783366216531), BigInt(567663097408));
 
   /**
    * Ratio Constructor.
@@ -259,6 +261,17 @@ export default class Ratio {
         n * r.denominator * bigIntPow(r.numerator, n - BigInt(1))
       );
     }, initialEstimate);
+  }
+
+  abs() {
+    if (this.numerator > 0) {
+      if (this.denominator > 0) {
+        return this;
+      } return new Ratio(this.numerator, -this.denominator);
+    }
+    if (this.denominator > 0) {
+      return new Ratio(-this.numerator, this.denominator);
+    } return new Ratio(-this.numerator, -this.denominator);
   }
 
   /**

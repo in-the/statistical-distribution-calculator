@@ -1,0 +1,27 @@
+.distribution-table,
+.distribution-table td,
+.distribution-table th {
+  border: thin #aaa solid;
+  border-collapse: collapse;
+}
+
+.distribution-table th {
+  background-color: #ffffcc;
+}
+
+.distribution-table td {
+  background-color: #ccffcc;
+}
+.output-container {
+  display: flex;
+}
+
+.graph-container {
+  display: flex;
+  flex-grow: 1;
+}
+
+.graph-container * {
+  max-width: 50%;
+  height: 500px;
+}

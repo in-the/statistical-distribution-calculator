@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/statistical-distribution-calculator/static/css/main.cd249e1f.css",
-    "main.js": "/statistical-distribution-calculator/static/js/main.5b19a380.js",
+    "main.css": "/statistical-distribution-calculator/static/css/main.bbf1226f.css",
+    "main.js": "/statistical-distribution-calculator/static/js/main.ae4169eb.js",
     "static/js/453.d88f47ce.chunk.js": "/statistical-distribution-calculator/static/js/453.d88f47ce.chunk.js",
     "index.html": "/statistical-distribution-calculator/index.html",
-    "main.cd249e1f.css.map": "/statistical-distribution-calculator/static/css/main.cd249e1f.css.map",
-    "main.5b19a380.js.map": "/statistical-distribution-calculator/static/js/main.5b19a380.js.map",
+    "main.bbf1226f.css.map": "/statistical-distribution-calculator/static/css/main.bbf1226f.css.map",
+    "main.ae4169eb.js.map": "/statistical-distribution-calculator/static/js/main.ae4169eb.js.map",
     "453.d88f47ce.chunk.js.map": "/statistical-distribution-calculator/static/js/453.d88f47ce.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.cd249e1f.css",
-    "static/js/main.5b19a380.js"
+    "static/css/main.bbf1226f.css",
+    "static/js/main.ae4169eb.js"
   ]
 }

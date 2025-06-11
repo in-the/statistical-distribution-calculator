@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import DistributionTable from "./DistributionTable";
 import DiscreteGraph from "./DiscreteGraph";
-import { positiveInteger } from "App";
-import Ratio from "math/ratio";
+import { positiveInteger, summaryLegend } from "math/distribution";
 
 export const PRECISION = 5;
 
 function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
   const [parameters, setParameters] = useState([]);
-  const [cumulativeProbability, setCumulativeProbability] = useState();
+  const [cumulativeProbability, setCumulativeProbability] = useState(0.5);
   const [quantile, setQuantile] = useState();
   const [quantileCode, setQuantileCode] = useState();
   const [observationCount, setObservationCount] = useState(10);
@@ -141,7 +140,7 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
           {observationCode}
           {observations.length ? " = " : ""}
         </div>
-        {observations.join(", ")}
+        <div>{observations.join(", ")}</div>
       </div>
     </div>
   );
@@ -189,6 +188,8 @@ export default function DiscreteDistributionCalculator({ settings }) {
     // But I can't figure out how to do this.
     setPdf(newDistribution.pdf().map((x) => x.toFixed(PRECISION)));
     setCdf(newDistribution.cdf().map((x) => x.toFixed(PRECISION)));
+    // console.log(newDistribution.pdf().map((x) => x.toFixed(PRECISION)));
+    // console.log(newDistribution.cdf().map((x) => x.toFixed(PRECISION)));
     after(newDistribution);
   }
 
@@ -227,6 +228,7 @@ export default function DiscreteDistributionCalculator({ settings }) {
     <div>
       {/* {console.log(Ratio.E.pow(Ratio.fromNumber(1.1)))} */}
       <ParameterInput {...{ settings, calculate, getQuantile, getObservations }} />
+
       <div className="output-container">
         <DistributionTable
           {...{
@@ -241,6 +243,21 @@ export default function DiscreteDistributionCalculator({ settings }) {
           <DiscreteGraph distribution={pdf} title={`${settings.title} PDF`} label="P(X = x)" />
           <DiscreteGraph distribution={cdf} title={`${settings.title} CDF`} label="P(X ≤ x)" />
         </div>
+      </div>
+
+      <div className="infobox">
+        <h2>{settings.title} Distribution</h2>
+        Interpretation: {settings.interpretation}.
+        <ul>
+          {distribution &&
+            Object.entries(summaryLegend).map(([property, legend], index) => (
+              property in distribution.summary() &&
+              <li key={index}>
+                {legend} {distribution.summary()[property].formula} ={" "}
+                {distribution.summary()[property].value}
+              </li>
+            ))}
+        </ul>
       </div>
     </div>
   );

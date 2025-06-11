@@ -2,7 +2,7 @@
   margin: 2rem;
 }
 
-h1 {
+h1, h2 {
   text-align: center;
 }
 
@@ -20,6 +20,7 @@ table th {
 
 .input-container {
   margin: 1rem;
+  white-space-collapse: preserve;
 }
 
 .input-table {
@@ -40,13 +41,17 @@ table th {
 .observations {
   display: flex;
   justify-content: center;
-  text-wrap: balance;
-  text-align: center;
+  /* text-wrap: balance; */
+  text-align: left;
   margin-bottom: 0.5rem;
 }
 
 .observations .legend {
   text-wrap: nowrap;
+}
+
+.observations div {
+  max-width: 50%;
 }
 
 .observations * {
@@ -81,4 +86,19 @@ table th {
 .graph-container * {
   max-width: 50%;
   height: 500px;
+}
+
+.summary-container {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, 300px);
+}
+.summary-container > * {
+  border: black 1px solid;
+}
+
+.infobox {
+  margin: 2rem auto;
+  width: fit-content;
+  list-style-position: inside;
 }

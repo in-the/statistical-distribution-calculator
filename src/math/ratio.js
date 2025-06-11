@@ -253,7 +253,7 @@ export default class Ratio {
     if (x < 0) return new Ratio(BigInt(1), BigInt(0));
 
     // Get an initial estimate using floating point math
-    const initialEstimate = Ratio.fromNumber(Math.pow(Number(x), 1 / Number(n)));
+    const initialEstimate = Ratio.fromDecimal(Math.pow(Number(x), 1 / Number(n)));
 
     const NUM_ITERATIONS = 3;
     return [...new Array(NUM_ITERATIONS)].reduce((r) => {
@@ -339,6 +339,22 @@ export default class Ratio {
    */
   toString() {
     return `${this.numerator} / ${this.denominator}`;
+  }
+
+  /**
+   * TODO: Note that in the webapp, x is converted from string to number by the interface, then is converted back from number to string here. Could be more efficient to just pass the original string. Since fromDecimal is only called in the constructor of the distributions, I'm not fussed about it at this stage. May need to correct in the future.
+   * 
+   * Number to Ratio.
+   * @param {number} x A number to convert to a ratio.
+   */
+  static fromDecimal(x) {
+    const expParse = /(-?\d+)?\.?(\d+)?/;
+    const [, n = "0", decimals = ""] = x.toString().match(expParse) || [];
+    
+    return simplify(
+      BigInt(`${n}${decimals}`) * exp10(PRECISION - decimals.length),
+      exp10(PRECISION)
+    );
   }
 
   /**

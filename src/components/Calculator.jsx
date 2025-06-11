@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import DistributionTable from "./DistributionTable";
+import DistributionTable, { copyText } from "./DistributionTable";
 import DiscreteGraph from "./DiscreteGraph";
 import { positiveInteger, summaryLegend } from "math/distribution";
 
@@ -93,7 +93,9 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
               />
             </td>
             <td>
-              {quantileCode}
+              <span className="r-code" onClick={(e) => copyText(e,quantileCode)}>
+                {quantileCode}
+              </span>
               {typeof quantile === "number" ? " = " : ""}
             </td>
             <td>{quantile}</td>
@@ -137,7 +139,9 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
 
       <div className="observations">
         <div className="legend">
-          {observationCode}
+          <span className="r-code" onClick={(e) => copyText(e,observationCode)}>
+            {observationCode}
+          </span>
           {observations.length ? " = " : ""}
         </div>
         <div>{observations.join(", ")}</div>
@@ -154,11 +158,12 @@ export default function DiscreteDistributionCalculator({ settings }) {
 
   useEffect(() => {
     setParameters(settings.parameters.map((parameter) => parameter.defaultValue));
-    setDistribution(
-      new settings.distribution(...settings.parameters.map((parameter) => parameter.defaultValue))
+    const newDistribution = new settings.distribution(
+      ...settings.parameters.map((parameter) => parameter.defaultValue)
     );
-    setPdf(settings.defaultPdf);
-    setCdf(settings.defaultCdf);
+    setDistribution(newDistribution);
+    setPdf(newDistribution.pdf());
+    setCdf(newDistribution.cdf());
   }, [settings]);
 
   /**
@@ -186,10 +191,8 @@ export default function DiscreteDistributionCalculator({ settings }) {
 
     // I'd like to call these after setDistribution finishes updating, instead of having to pass newDistribution manually
     // But I can't figure out how to do this.
-    setPdf(newDistribution.pdf().map((x) => x.toFixed(PRECISION)));
-    setCdf(newDistribution.cdf().map((x) => x.toFixed(PRECISION)));
-    // console.log(newDistribution.pdf().map((x) => x.toFixed(PRECISION)));
-    // console.log(newDistribution.cdf().map((x) => x.toFixed(PRECISION)));
+    setPdf(newDistribution.pdf());
+    setCdf(newDistribution.cdf());
     after(newDistribution);
   }
 
@@ -240,8 +243,16 @@ export default function DiscreteDistributionCalculator({ settings }) {
           }}
         />
         <div className="graph-container">
-          <DiscreteGraph distribution={pdf} title={`${settings.title} PDF`} label="P(X = x)" />
-          <DiscreteGraph distribution={cdf} title={`${settings.title} CDF`} label="P(X ≤ x)" />
+          <DiscreteGraph
+            distribution={pdf.map((x) => x.toFixed(PRECISION))}
+            title={`${settings.title} PDF`}
+            label="P(X = x)"
+          />
+          <DiscreteGraph
+            distribution={cdf.map((x) => x.toFixed(PRECISION))}
+            title={`${settings.title} CDF`}
+            label="P(X ≤ x)"
+          />
         </div>
       </div>
 
@@ -250,13 +261,15 @@ export default function DiscreteDistributionCalculator({ settings }) {
         Interpretation: {settings.interpretation}.
         <ul>
           {distribution &&
-            Object.entries(summaryLegend).map(([property, legend], index) => (
-              property in distribution.summary() &&
-              <li key={index}>
-                {legend} {distribution.summary()[property].formula} ={" "}
-                {distribution.summary()[property].value}
-              </li>
-            ))}
+            Object.entries(summaryLegend).map(
+              ([property, legend], index) =>
+                property in distribution.summary() && (
+                  <li key={index}>
+                    {legend} {distribution.summary()[property].formula} ={" "}
+                    {distribution.summary()[property].value}
+                  </li>
+                )
+            )}
         </ul>
       </div>
     </div>

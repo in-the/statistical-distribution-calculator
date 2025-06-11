@@ -2,7 +2,8 @@
   margin: 2rem;
 }
 
-h1, h2 {
+h1,
+h2 {
   text-align: center;
 }
 
@@ -58,24 +59,39 @@ table th {
   flex-shrink: 1;
 }
 
+#exact-toggle-label,
+#exact-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.distribution-table {
+  word-wrap: break-word;
+}
+
 .distribution-table td,
 .distribution-table th {
   border: thin #aaa solid;
+  max-width: 12vw;
 }
 
 .distribution-table th {
   background-color: #ffffcc;
-  word-wrap: break-word;
-  max-width: 10rem;
 }
 
 .distribution-table td {
   background-color: #ccffcc;
   text-align: center;
 }
+
 .output-container {
   display: flex;
   align-items: flex-start;
+}
+
+.r-code {
+  cursor: pointer;
+  user-select: none;
 }
 
 .graph-container {

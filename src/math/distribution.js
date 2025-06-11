@@ -117,7 +117,7 @@ class DiscreteDistribution {
       this.setDistribution();
     }
     this.quantile = (cumulativeProbability) => {
-      const cumulative = Ratio.fromNumber(cumulativeProbability);
+      const cumulative = Ratio.fromDecimal(cumulativeProbability);
       let q = 0;
       while (true) {
         if (this.cdfDistribution[q].gt(cumulative) || q === this.cdfDistribution.length) {
@@ -153,7 +153,7 @@ class Binomial extends DiscreteDistribution {
     super();
     this.size = size;
     this.probFloat = prob.toFixed(SUMMARYPRECISION);
-    this.prob = Ratio.fromNumber(prob);
+    this.prob = Ratio.fromDecimal(prob);
 
     this.px = [Ratio.ONE];
     this.cpx = [Ratio.ONE];
@@ -276,32 +276,6 @@ class Binomial extends DiscreteDistribution {
         defaultValue: 0.5,
       },
     ],
-    defaultPdf: [
-      "0.00098",
-      "0.00977",
-      "0.04395",
-      "0.11719",
-      "0.20508",
-      "0.24609",
-      "0.20508",
-      "0.11719",
-      "0.04395",
-      "0.00977",
-      "0.00098",
-    ],
-    defaultCdf: [
-      "0.00098",
-      "0.01074",
-      "0.05469",
-      "0.17188",
-      "0.37695",
-      "0.62305",
-      "0.82813",
-      "0.94531",
-      "0.98926",
-      "0.99902",
-      "1.00000",
-    ],
   };
 }
 
@@ -313,10 +287,10 @@ class Poisson extends DiscreteDistribution {
   constructor(lambda) {
     super();
     this.lambdaFloat = lambda.toFixed(SUMMARYPRECISION);
-    this.lambda = Ratio.fromNumber(lambda);
+    this.lambda = Ratio.fromDecimal(lambda);
     this.lambdaKArray = [Ratio.ONE];
     // This power is not exact, estimate with floating point exponentiation
-    this.eNegLambda = Ratio.fromNumber(
+    this.eNegLambda = Ratio.fromDecimal(
       Ratio.E.toFixed(20) ** this.lambda.times(Ratio.fromInt(-1)).toFixed(20)
     );
   }
@@ -397,28 +371,6 @@ class Poisson extends DiscreteDistribution {
         defaultValue: 1,
       },
     ],
-    defaultPdf: [
-      "0.36788",
-      "0.36788",
-      "0.18394",
-      "0.06131",
-      "0.01533",
-      "0.00307",
-      "0.00051",
-      "0.00007",
-      "0.00001",
-    ],
-    defaultCdf: [
-      "0.36788",
-      "0.73576",
-      "0.91970",
-      "0.98101",
-      "0.99634",
-      "0.99941",
-      "0.99992",
-      "0.99999",
-      "1.00000",
-    ],
   };
 }
 
@@ -430,7 +382,7 @@ class Geometric extends DiscreteDistribution {
   constructor(prob) {
     super();
     this.probFloat = prob.toFixed(SUMMARYPRECISION);
-    this.prob = Ratio.fromNumber(prob);
+    this.prob = Ratio.fromDecimal(prob);
     this.cprob = Ratio.ONE.subtract(this.prob);
     this.cprobKArray = [Ratio.ONE];
   }
@@ -461,6 +413,7 @@ class Geometric extends DiscreteDistribution {
     [this.pdfDistribution, this.cdfDistribution] = this.distributionDynamicRange((x) =>
       this.probability(x)
     );
+    console.log(this.cProbK(0), this.prob);
   }
 
   summary() {
@@ -522,38 +475,6 @@ class Geometric extends DiscreteDistribution {
         defaultValue: 0.6,
       },
     ],
-    defaultPdf: [
-      "0.60000",
-      "0.24000",
-      "0.09600",
-      "0.03840",
-      "0.01536",
-      "0.00614",
-      "0.00246",
-      "0.00098",
-      "0.00039",
-      "0.00016",
-      "0.00006",
-      "0.00003",
-      "0.00001",
-      "0.00000",
-    ],
-    defaultCdf: [
-      "0.60000",
-      "0.84000",
-      "0.93600",
-      "0.97440",
-      "0.98976",
-      "0.99590",
-      "0.99836",
-      "0.99934",
-      "0.99974",
-      "0.99990",
-      "0.99996",
-      "0.99998",
-      "0.99999",
-      "1.00000",
-    ],
   };
 }
 
@@ -568,7 +489,7 @@ class NegativeBinomial extends DiscreteDistribution {
     super();
     this.size = size;
     this.probFloat = prob.toFixed(SUMMARYPRECISION);
-    this.prob = Ratio.fromNumber(prob);
+    this.prob = Ratio.fromDecimal(prob);
     this.cprob = Ratio.ONE.subtract(this.prob);
 
     this.pKArray = [Ratio.ONE];
@@ -684,70 +605,6 @@ class NegativeBinomial extends DiscreteDistribution {
         symbol: "p",
         defaultValue: 0.5,
       },
-    ],
-    defaultPdf: [
-      "0.03125",
-      "0.07813",
-      "0.11719",
-      "0.13672",
-      "0.13672",
-      "0.12305",
-      "0.10254",
-      "0.08057",
-      "0.06042",
-      "0.04364",
-      "0.03055",
-      "0.02083",
-      "0.01389",
-      "0.00908",
-      "0.00584",
-      "0.00370",
-      "0.00231",
-      "0.00143",
-      "0.00087",
-      "0.00053",
-      "0.00032",
-      "0.00019",
-      "0.00011",
-      "0.00007",
-      "0.00004",
-      "0.00002",
-      "0.00001",
-      "0.00001",
-      "0.00000",
-      "0.00000",
-    ],
-    defaultCdf: [
-      "0.03125",
-      "0.10938",
-      "0.22656",
-      "0.36328",
-      "0.50000",
-      "0.62305",
-      "0.72559",
-      "0.80615",
-      "0.86658",
-      "0.91022",
-      "0.94077",
-      "0.96159",
-      "0.97548",
-      "0.98456",
-      "0.99039",
-      "0.99409",
-      "0.99640",
-      "0.99783",
-      "0.99870",
-      "0.99923",
-      "0.99954",
-      "0.99973",
-      "0.99984",
-      "0.99991",
-      "0.99995",
-      "0.99997",
-      "0.99998",
-      "0.99999",
-      "0.99999",
-      "1.00000",
     ],
   };
 }
@@ -883,32 +740,6 @@ class Hypergeometric extends DiscreteDistribution {
         symbol: "n",
         defaultValue: 10,
       },
-    ],
-    defaultPdf: [
-      "0.00001",
-      "0.00054",
-      "0.01096",
-      "0.07794",
-      "0.23869",
-      "0.34372",
-      "0.23869",
-      "0.07794",
-      "0.01096",
-      "0.00054",
-      "0.00001",
-    ],
-    defaultCdf: [
-      "0.00001",
-      "0.00055",
-      "0.01151",
-      "0.08945",
-      "0.32814",
-      "0.67186",
-      "0.91055",
-      "0.98849",
-      "0.99945",
-      "0.99999",
-      "1.00000",
     ],
   };
 }

@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/statistical-distribution-calculator/static/css/main.c3556fce.css",
-    "main.js": "/statistical-distribution-calculator/static/js/main.f26ab95c.js",
+    "main.js": "/statistical-distribution-calculator/static/js/main.ae07ac17.js",
     "static/js/453.d88f47ce.chunk.js": "/statistical-distribution-calculator/static/js/453.d88f47ce.chunk.js",
     "index.html": "/statistical-distribution-calculator/index.html",
     "main.c3556fce.css.map": "/statistical-distribution-calculator/static/css/main.c3556fce.css.map",
-    "main.f26ab95c.js.map": "/statistical-distribution-calculator/static/js/main.f26ab95c.js.map",
+    "main.ae07ac17.js.map": "/statistical-distribution-calculator/static/js/main.ae07ac17.js.map",
     "453.d88f47ce.chunk.js.map": "/statistical-distribution-calculator/static/js/453.d88f47ce.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.c3556fce.css",
-    "static/js/main.f26ab95c.js"
+    "static/js/main.ae07ac17.js"
   ]
 }

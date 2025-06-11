@@ -1,4 +1,4 @@
-import { Line } from "react-chartjs-2";
+import { Bar } from "react-chartjs-2";
 import Chart from "chart.js/auto";
 
 export default function DiscreteGraph({ distribution, title, label }) {
@@ -25,5 +25,5 @@ export default function DiscreteGraph({ distribution, title, label }) {
     ],
   };
 
-  return <Line {...{ options, data }} />;
+  return <Bar {...{ options, data }} />;
 }

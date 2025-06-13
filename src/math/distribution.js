@@ -1280,7 +1280,7 @@ class Exponential extends ContinuousDistribution {
     rCode: (parameters) => ({
       pdf: `dexp(x, ${parameters[0]})`,
       cdf: `pexp(x, ${parameters[0]})`,
-      cdfReverse: `pexp(x, ${parameters[0]}}, lower.tail=FALSE)`,
+      cdfReverse: `pexp(x, ${parameters[0]}, lower.tail=FALSE)`,
       quantile: (cumulativeProbability) => `qexp(${cumulativeProbability}, ${parameters[0]})`,
       observations: (observationCount) => `rexp(${observationCount}, ${parameters[0]})`,
     }),

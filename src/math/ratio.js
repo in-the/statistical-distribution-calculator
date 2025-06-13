@@ -410,4 +410,15 @@ export default class Ratio {
     }
     return `${intPart}.${leftPad(Number(n), "" + decimalPart)}`;
   }
+
+  decimalCount () {
+    // Convert to String
+    const numberAsString = Number(this.toFixed(20)).toString();
+    // String Contains Decimal
+    if (numberAsString.includes('.')) {
+      return numberAsString.split('.')[1].length;
+    }
+    // String Does Not Contain Decimal
+    return 0;
+  }
 }

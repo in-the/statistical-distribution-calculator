@@ -10,7 +10,7 @@ export function positiveInteger(variable, symbol) {
   return true;
 }
 
-function positiveIntegerNeqZero(variable, symbol) {
+export function positiveIntegerNeqZero(variable, symbol) {
   if (isNaN(variable) || variable === Infinity || variable % 1 || variable <= 0) {
     alert(`${symbol} must be a positive integer`);
     return false;
@@ -18,17 +18,33 @@ function positiveIntegerNeqZero(variable, symbol) {
   return true;
 }
 
-function floatInRange(variable, min, max, symbol) {
-  if (isNaN(variable) || isNaN(parseFloat(variable)) || variable < min || variable > max) {
-    alert(`${symbol} must be in range [${min}, ${max}]`);
+export function positiveIntegerMin(variable, symbol, min) {
+  if (isNaN(variable) || variable === Infinity || variable % 1 || variable < min) {
+    alert(`${symbol} must be an integer ≥ ${min}`);
     return false;
   }
   return true;
 }
 
-function floatInRangeOpenInterval(variable, min, max, symbol) {
-  if (isNaN(variable) || isNaN(parseFloat(variable)) || variable <= min || variable >= max) {
-    alert(`${symbol} must be in range (${min}, ${max})`);
+function real(variable, symbol) {
+  if (isNaN(variable) || variable === Infinity) {
+    alert(`${symbol} must be a real number`);
+    return false;
+  }
+  return true;
+}
+
+function positiveRealNeqZero(variable, symbol) {
+  if (isNaN(variable) || isNaN(parseFloat(variable)) || variable <= 0 || variable === Infinity) {
+    alert(`${symbol} must be greater than 0`);
+    return false;
+  }
+  return true;
+}
+
+function realInRange(variable, min, max, symbol) {
+  if (isNaN(variable) || isNaN(parseFloat(variable)) || variable < min || variable > max) {
+    alert(`${symbol} must be in range [${min}, ${max}]`);
     return false;
   }
   return true;
@@ -46,19 +62,22 @@ export const summaryLegend = {
 
 const SUMMARYPRECISION = 2;
 
+const ESTIMATE_PRECISION = 20;
+
 class DiscreteDistribution {
+  TYPE = "discrete";
+
   /**
-   * @param {function(int x => Ratio)} probabilityFunction P(X = x)
    * @param {int} max
    * @param {int} min
-   * @returns
+   * @returns [[Ratio] pdf, [Ratio] cdf]
    */
-  distributionSetRange(probabilityFunction, max, min = 0) {
+  distributionSetRange(max, min = 0) {
     const pdf = [];
     const cdf = [];
     let cumulative = Ratio.ZERO;
     for (let x = min; x <= max; x++) {
-      const p = probabilityFunction(x);
+      const p = this.probability(x);
       pdf.push(p);
       cumulative = cumulative.add(p);
       cdf.push(cumulative);
@@ -67,16 +86,15 @@ class DiscreteDistribution {
   }
 
   /**
-   * @param {function(int x => Ratio)} probabilityFunction P(X = x)
    * @param {int} min
    * @returns
    */
-  distributionDynamicRange(probabilityFunction, min = 0) {
+  distributionDynamicRange(min = 0) {
     const pdf = [];
     const cdf = [];
     let cumulative = Ratio.ZERO;
     for (let x = min; Number(cumulative.toFixed(PRECISION)) < 1; x++) {
-      const p = probabilityFunction(x);
+      const p = this.probability(x);
       pdf.push(p);
       cumulative = cumulative.add(p);
       cdf.push(cumulative);
@@ -180,10 +198,7 @@ class Binomial extends DiscreteDistribution {
    * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
    */
   setDistribution() {
-    [this.pdfDistribution, this.cdfDistribution] = this.distributionSetRange(
-      (x) => this.probability(x),
-      this.size
-    );
+    [this.pdfDistribution, this.cdfDistribution] = this.distributionSetRange(this.size);
   }
 
   // /**
@@ -245,6 +260,7 @@ class Binomial extends DiscreteDistribution {
 
   static settings = {
     distribution: Binomial,
+
     title: "Binomial",
     interpretation:
       "Number of success in a sequence of n independent experiments with success of probability p, failure of probability q = 1 - p",
@@ -261,7 +277,7 @@ class Binomial extends DiscreteDistribution {
     parameters: [
       {
         name: "size",
-        description: `Number of trials, n:`,
+        description: `Number of trials, n`,
         domain: `n an integer ≥ 0`,
         validation: positiveInteger,
         symbol: "n",
@@ -269,9 +285,9 @@ class Binomial extends DiscreteDistribution {
       },
       {
         name: "prob",
-        description: `Probability of success, p:`,
+        description: `Probability of success, p`,
         domain: `0 < p < 1`,
-        validation: (variable, symbol) => floatInRange(variable, 0, 1, symbol),
+        validation: (variable, symbol) => realInRange(variable, 0, 1, symbol),
         symbol: "p",
         defaultValue: 0.5,
       },
@@ -291,7 +307,7 @@ class Poisson extends DiscreteDistribution {
     this.lambdaKArray = [Ratio.ONE];
     // This power is not exact, estimate with floating point exponentiation
     this.eNegLambda = Ratio.fromDecimal(
-      Ratio.E.toFixed(20) ** this.lambda.times(Ratio.fromInt(-1)).toFixed(20)
+      Math.E ** this.lambda.times(Ratio.fromInt(-1)).toFixed(ESTIMATE_PRECISION)
     );
   }
 
@@ -308,7 +324,7 @@ class Poisson extends DiscreteDistribution {
 
   /**
    * @param {int} x
-   * @returns {Ratio} P(X = x)
+   * @returns {Ratio} P(X = x) = lambda^k * e^-lambda / k!
    */
   probability(x) {
     return this.lambdaK(x)
@@ -320,9 +336,7 @@ class Poisson extends DiscreteDistribution {
    * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
    */
   setDistribution() {
-    [this.pdfDistribution, this.cdfDistribution] = this.distributionDynamicRange((x) =>
-      this.probability(x)
-    );
+    [this.pdfDistribution, this.cdfDistribution] = this.distributionDynamicRange();
   }
 
   summary() {
@@ -350,6 +364,7 @@ class Poisson extends DiscreteDistribution {
 
   static settings = {
     distribution: Poisson,
+
     title: "Poisson",
     interpretation:
       "Number of events occurring in an interval of time, if these events occur with a known constant mean rate λ, and occur independently of the time since the last event",
@@ -364,9 +379,9 @@ class Poisson extends DiscreteDistribution {
     parameters: [
       {
         name: "lambda",
-        description: `Constant mean rate, λ:`,
+        description: `Constant mean rate, λ`,
         domain: `λ > 0`,
-        validation: (variable, symbol) => floatInRangeOpenInterval(variable, 0, Infinity, symbol),
+        validation: (variable, symbol) => positiveRealNeqZero(variable, 0, Infinity, symbol),
         symbol: "λ",
         defaultValue: 1,
       },
@@ -410,10 +425,7 @@ class Geometric extends DiscreteDistribution {
    * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
    */
   setDistribution() {
-    [this.pdfDistribution, this.cdfDistribution] = this.distributionDynamicRange((x) =>
-      this.probability(x)
-    );
-    console.log(this.cProbK(0), this.prob);
+    [this.pdfDistribution, this.cdfDistribution] = this.distributionDynamicRange();
   }
 
   summary() {
@@ -456,6 +468,7 @@ class Geometric extends DiscreteDistribution {
   static settings = {
     distribution: Geometric,
     title: "Geometric",
+
     interpretation: "Number of failures before the first success, with success of probability p",
     name: (parameters) => `Geometric distribution (p=${parameters[0]})`,
     rCode: (parameters) => ({
@@ -468,9 +481,9 @@ class Geometric extends DiscreteDistribution {
     parameters: [
       {
         name: "prob",
-        description: `Probability of success, p:`,
+        description: `Probability of success, p`,
         domain: `0 < p < 1`,
-        validation: (variable, symbol) => floatInRange(variable, 0, 1, symbol),
+        validation: (variable, symbol) => realInRange(variable, 0, 1, symbol),
         symbol: "p",
         defaultValue: 0.6,
       },
@@ -532,9 +545,7 @@ class NegativeBinomial extends DiscreteDistribution {
    * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
    */
   setDistribution() {
-    [this.pdfDistribution, this.cdfDistribution] = this.distributionDynamicRange((x) =>
-      this.probability(x)
-    );
+    [this.pdfDistribution, this.cdfDistribution] = this.distributionDynamicRange();
   }
 
   summary() {
@@ -576,6 +587,7 @@ class NegativeBinomial extends DiscreteDistribution {
   static settings = {
     distribution: NegativeBinomial,
     title: "Negative Binomial",
+
     interpretation:
       "Number of failures in a sequence of independent and identically distributed Bernoulli trials with success of probability p, before a fixed number r of scucesses occur",
     name: (parameters) => `Negative Binomial distribution (r=${parameters[0]}, p=${parameters[1]})`,
@@ -591,7 +603,7 @@ class NegativeBinomial extends DiscreteDistribution {
     parameters: [
       {
         name: "size",
-        description: `Number of successes, r:`,
+        description: `Number of successes, r`,
         domain: `r an integer > 0`,
         validation: positiveIntegerNeqZero,
         symbol: "r",
@@ -599,9 +611,9 @@ class NegativeBinomial extends DiscreteDistribution {
       },
       {
         name: "prob",
-        description: `Probability of success, p:`,
+        description: `Probability of success, p`,
         domain: `0 < p < 1`,
-        validation: (variable, symbol) => floatInRange(variable, 0, 1, symbol),
+        validation: (variable, symbol) => realInRange(variable, 0, 1, symbol),
         symbol: "p",
         defaultValue: 0.5,
       },
@@ -648,7 +660,6 @@ class Hypergeometric extends DiscreteDistribution {
    */
   setDistribution() {
     [this.pdfDistribution, this.cdfDistribution] = this.distributionSetRange(
-      (x) => this.probability(x),
       Math.min(this.draws, this.successStates)
     );
   }
@@ -696,6 +707,7 @@ class Hypergeometric extends DiscreteDistribution {
   static settings = {
     distribution: Hypergeometric,
     title: "Hypergeometric",
+
     interpretation:
       "Number of successes in n draws, without replacement, from a population of size N with exactly K objects with the success feature",
     name: (parameters) =>
@@ -718,7 +730,7 @@ class Hypergeometric extends DiscreteDistribution {
     parameters: [
       {
         name: "size",
-        description: `Population size, N:`,
+        description: `Population size, N`,
         domain: `N an integer ≥ 0`,
         validation: positiveInteger,
         symbol: "N",
@@ -726,7 +738,7 @@ class Hypergeometric extends DiscreteDistribution {
       },
       {
         name: "success-states",
-        description: `Number of success states in the population, K:`,
+        description: `Number of success states in the population, K`,
         domain: `0 ≤ K ≤ N`,
         validation: positiveInteger, // Doesn't check for <=N
         symbol: "K",
@@ -734,11 +746,552 @@ class Hypergeometric extends DiscreteDistribution {
       },
       {
         name: "draws",
-        description: `Number of draws, n:`,
+        description: `Number of draws, n`,
         domain: `0 < n ≤ N`,
         validation: positiveInteger, // Doesn't check for <=N
         symbol: "n",
         defaultValue: 10,
+      },
+    ],
+  };
+}
+
+class ContinuousDistribution {
+  DATAPOINTS = 21;
+  TYPE = "continuous";
+  static MAX_X_PRECISION = 5;
+  static PREFERRED_X_PRECISION = 1;
+
+  /**
+   * @param {Ratio} maxX
+   * @param {Ratio} minX
+   * @returns [[[float x, Ratio f(x)]] pdf, [[float x, Ratio F(x)]] cdf]
+   */
+  distributionSetRange(maxX, minX = Ratio.ZERO, minF = Ratio.ZERO) {
+    const increment = maxX.subtract(minX).divideBy(Ratio.fromInt(this.DATAPOINTS - 1));
+    const halfIncrement = increment.divideBy(Ratio.fromInt(2));
+    const sixthIncrement = increment.divideBy(Ratio.fromInt(6));
+
+    const precision = Math.min(
+      ContinuousDistribution.MAX_X_PRECISION,
+      Math.max(increment.decimalCount(), maxX.decimalCount(), minX.decimalCount())
+    );
+
+    let previous = this.probability(minX);
+    let cumulative = minF;
+    const minXFloat = Number(minX.toFixed(precision));
+    const pdf = [[minXFloat, previous]];
+    const cdf = [[minXFloat, minF]];
+    for (
+      let x = minX.add(increment), counter = 1;
+      counter < this.DATAPOINTS;
+      x = x.add(increment), counter++
+    ) {
+      const p = this.probability(x);
+      const xRounded = Number(x.toFixed(precision));
+      pdf.push([xRounded, p]);
+      cumulative = this.probability(x.subtract(halfIncrement))
+        .times(Ratio.fromInt(4))
+        .add(previous)
+        .add(p)
+        .times(sixthIncrement)
+        .add(cumulative); // Simpson's rule
+      cdf.push([xRounded, cumulative]);
+      previous = p;
+    }
+    return [pdf, cdf];
+  }
+
+  /**
+   * @param {Ratio} maxX
+   * @param {Ratio} centreX
+   * @returns [[[float x, Ratio f(x)]] pdf, [[float x, Ratio F(x)]] cdf]
+   */
+  distributionSetRangeSymmetric(maxX, centreX = Ratio.ZERO) {
+    const datapoints = Math.floor(this.DATAPOINTS / 2) * 2;
+    const increment = maxX
+      .subtract(centreX)
+      .times(Ratio.fromInt(2))
+      .divideBy(Ratio.fromInt(datapoints));
+    const halfIncrement = increment.divideBy(Ratio.fromInt(2));
+    const sixthIncrement = increment.divideBy(Ratio.fromInt(6));
+
+    const precision = Math.min(
+      ContinuousDistribution.MAX_X_PRECISION,
+      Math.max(increment.decimalCount(), maxX.decimalCount(), centreX.decimalCount())
+    );
+
+    let previous = this.probability(centreX);
+    let cumulative = Ratio.fromDecimal(1 / 2);
+    const centerXFloat = Number(centreX.toFixed(precision));
+    let pdf = [[centerXFloat, previous]];
+    let cdf = [[centerXFloat, cumulative]];
+    for (
+      let x = centreX.add(increment), counter = 0;
+      counter < datapoints;
+      x = x.add(increment), counter += 2
+    ) {
+      const p = this.probability(x);
+      const xRounded = Number(x.toFixed(precision));
+      pdf.push([xRounded, p]);
+      cumulative = this.probability(x.subtract(halfIncrement))
+        .times(Ratio.fromInt(4))
+        .add(previous)
+        .add(p)
+        .times(sixthIncrement)
+        .add(cumulative); // Simpson's rule
+      cdf.push([xRounded, cumulative]);
+      previous = p;
+    }
+
+    pdf = pdf
+      .slice(1)
+      .reverse()
+      .map(([x, p]) => [Number((-x + centerXFloat + centerXFloat).toFixed(precision)), p])
+      .concat(pdf);
+    cdf = cdf
+      .slice(1)
+      .reverse()
+      .map(([x, p]) => [
+        Number((-x + centerXFloat + centerXFloat).toFixed(precision)),
+        Ratio.ONE.subtract(p),
+      ])
+      .concat(cdf);
+    return [pdf, cdf];
+  }
+
+  /**
+   * @param {Ratio} increment
+   * @param {Ratio} minX
+   * @returns [[[float x, Ratio f(x)]] pdf, [[float x, Ratio F(x)]] cdf]
+   */
+  distributionSetIncrement(increment, minX = Ratio.ZERO, minF = Ratio.ZERO) {
+    const halfIncrement = increment.divideBy(Ratio.fromInt(2));
+    const sixthIncrement = increment.divideBy(Ratio.fromInt(6));
+
+    const precision = Math.min(
+      ContinuousDistribution.MAX_X_PRECISION,
+      Math.max(increment.decimalCount(), minX.decimalCount())
+    );
+
+    let previous = this.probability(minX);
+    let cumulative = minF;
+    const minXFloat = Number(minX.toFixed(precision));
+    const pdf = [[minXFloat, previous]];
+    const cdf = [[minXFloat, minF]];
+    for (
+      let x = minX.add(increment), counter = 1;
+      counter < this.DATAPOINTS;
+      x = x.add(increment), counter++
+    ) {
+      const p = this.probability(x);
+      const xRounded = Number(x.toFixed(precision));
+      pdf.push([xRounded, p]);
+      cumulative = this.probability(x.subtract(halfIncrement))
+        .times(Ratio.fromInt(4))
+        .add(previous)
+        .add(p)
+        .times(sixthIncrement)
+        .add(cumulative); // Simpson's rule
+      cdf.push([xRounded, cumulative]);
+      previous = p;
+    }
+    return [pdf, cdf];
+  }
+
+  /**
+   * Sets pdf+cdf if not already set
+   * @returns {<array[Ratio]>} pdf P(X = x) forall x
+   */
+  pdf() {
+    if (typeof this.pdfDistribution === "undefined") {
+      this.setDistribution();
+    }
+    this.pdf = () => this.pdfDistribution;
+    return this.pdfDistribution;
+  }
+
+  /**
+   * Sets pdf+cdf if not already set
+   * @returns {<array[Ratio]>} cdf P(X <= x) for all x
+   */
+  cdf() {
+    if (typeof this.cdfDistribution === "undefined") {
+      this.setDistribution();
+    }
+    this.cdf = () => this.cdfDistribution;
+    return this.cdfDistribution;
+  }
+
+  /**
+   * Very rough estimate, depends on precision of CDF. Ideally override with more accurate one.
+   * @param {float} cumulativeProbability
+   * @returns {float} Quantile of distribution at cumulativeProbability
+   */
+  quantile(cumulativeProbability) {
+    if (typeof this.cdfDistribution === "undefined") {
+      this.setDistribution();
+    }
+    this.quantile = (cumulativeProbability) => {
+      const cumulative = Ratio.fromDecimal(cumulativeProbability);
+      let q = 0;
+      while (true) {
+        if (this.cdfDistribution[q].gt(cumulative) || q === this.cdfDistribution.length) {
+          return this.cdfDistribution[q];
+        }
+        q++;
+      }
+    };
+    return this.quantile(cumulativeProbability);
+  }
+
+  /**
+   * @param {int} count
+   * @returns {array[float]} Array of <count> random observations from distribution
+   */
+  observe(count = 1) {
+    const observations = [];
+    for (let i = 0; i < count; i++) {
+      observations.push(this.quantile(Math.random()));
+    }
+    return observations;
+  }
+
+  // TODO: Temporary
+  summary() {
+    return {};
+  }
+}
+
+class Normal extends ContinuousDistribution {
+  /**
+   * @param {float} mean
+   * @param {float} variance
+   */
+  constructor(mean, variance) {
+    super();
+    this.mean = Ratio.fromDecimal(mean);
+    this.meanFloat = mean;
+    this.variance = Ratio.fromDecimal(variance);
+    this.standardDeviationFloat = variance ** 0.5;
+    this.standardDeviation = Ratio.fromDecimal(this.standardDeviationFloat);
+    this.twoVariance = Ratio.fromDecimal(2 * variance); // 2sigma^2
+    this.correctionFactor = Ratio.ONE.divideBy(
+      Ratio.fromDecimal(Ratio.PI.times(this.twoVariance).toFixed(ESTIMATE_PRECISION) ** 0.5)
+    ); // 1 / sqrt(2 PI sigma^2)
+  }
+
+  /**
+   * // TODO: Decide if to use float or Ratio for x
+   * @param {Ratio} x
+   * @returns {Ratio} P(X = x) = [1 / sqrt(2 PI sigma^2)] * exp(-(x-mu)^2 / 2sigma^2)
+   */
+  probability(x) {
+    const xMinusMu = x.subtract(this.mean);
+    return Ratio.fromDecimal(
+      Math.E ** -xMinusMu.times(xMinusMu).divideBy(this.twoVariance).toFixed(ESTIMATE_PRECISION)
+    ).times(this.correctionFactor);
+  }
+
+  /**
+   * @returns {[Ratio domainMin, Ratio FMin]}
+   * domainMin = lower value of domain to be displayed
+   * FMin = P(X <= domainMin)
+   */
+  min() {
+    const domainMin = this.mean.subtract(this.standardDeviation.times(Ratio.fromInt(3)));
+    const FMin = Ratio.fromDecimal(0.0013499);
+    this.min = () => {
+      return [domainMin, FMin];
+    };
+    return this.min();
+  }
+
+  /**
+   * @returns {[Ratio domainMax, Ratio FMax]}
+   * domainMax = upper value of domain to be displayed
+   * FMax = P(X >= domainMax)
+   */
+  max() {
+    const domainMax = this.mean.add(this.standardDeviation.times(Ratio.fromInt(3)));
+    const FMax = Ratio.fromDecimal(0.9986501);
+    this.max = () => {
+      return [domainMax, FMax];
+    };
+    return this.max();
+  }
+
+  /**
+   * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
+   */
+  setDistribution() {
+    [this.pdfDistribution, this.cdfDistribution] = this.distributionSetRangeSymmetric(
+      this.max()[0],
+      this.mean
+    );
+  }
+
+  /**
+   * Beasley-Springer-Moro approximation
+   * @param {float} cumulativeProbability
+   * @requires 0 <= cumulativeProbability <= 1
+   * @returns {float} Quantile of distribution at cumulativeProbability
+   */
+  quantile(cumulativeProbability) {
+    // Coefficients in rational approximations
+    const a = [
+      -3.969683028665376e1, 2.209460984245205e2, -2.759285104469687e2, 1.38357751867269e2,
+      -3.066479806614716e1, 2.506628277459239,
+    ];
+
+    const b = [
+      -5.447609879822406e1, 1.615858368580409e2, -1.556989798598866e2, 6.680131188771972e1,
+      -1.328068155288572e1,
+    ];
+
+    const c = [
+      -7.784894002430293e-3, -3.223964580411365e-1, -2.400758277161838, -2.549732539343734,
+      4.374664141464968, 2.938163982698783,
+    ];
+
+    const d = [7.784695709041462e-3, 3.224671290700398e-1, 2.445134137142996, 3.754408661907416];
+
+    // Define break-points
+    const plow = 0.02425;
+    const phigh = 1 - plow;
+    let q, r;
+
+    if (cumulativeProbability < plow) {
+      // Rational approximation for lower region
+      q = Math.sqrt(-2 * Math.log(cumulativeProbability));
+      return (
+        this.meanFloat +
+        this.standardDeviationFloat *
+          ((((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+            ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1))
+      );
+    } else if (cumulativeProbability > phigh) {
+      // Rational approximation for upper region
+      q = Math.sqrt(-2 * Math.log(1 - cumulativeProbability));
+      return (
+        this.meanFloat -
+        this.standardDeviationFloat *
+          ((((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+            ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1))
+      );
+    } else {
+      // Rational approximation for central region
+      q = cumulativeProbability - 0.5;
+      r = q * q;
+      return (
+        this.meanFloat +
+        this.standardDeviationFloat *
+          (((((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q) /
+            (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1))
+      );
+    }
+  }
+
+  /**
+   * @param {int} count
+   * @returns {array[float]} Array of <count> random observations from distribution
+   * Using Box-Muller transform
+   */
+  observe(count = 1) {
+    const observations = [];
+    for (let i = 0; i < count; i += 2) {
+      const r = (-2 * Math.log(Math.random())) ** 0.5 * this.standardDeviationFloat;
+      const theta = 2 * Math.PI * Math.random();
+      observations.push(r * Math.cos(theta) + this.meanFloat);
+      observations.push(r * Math.sin(theta) + this.meanFloat);
+    }
+    if (count % 2) {
+      observations.pop();
+    }
+    return observations;
+  }
+
+  static settings = {
+    distribution: Normal,
+    title: "Normal",
+    interpretation:
+      "The central limit theorem states that, under appropriate conditions, the distribution of a normalized version of the sample mean converges to a standard normal distribution",
+    name: (parameters) => `Normal distribution (μ=${parameters[0]}, σ^2=${parameters[1]})`,
+    rCode: (parameters) => ({
+      pdf: `dnorm(x, ${parameters[0]}, ${parameters[1]})`,
+      cdf: `pnorm(x, ${parameters[0]}, ${parameters[1]})`,
+      cdfReverse: `pnorm(x, ${parameters[0]}, ${parameters[1]}, lower.tail=FALSE)`,
+      quantile: (cumulativeProbability) =>
+        `qnorm(${cumulativeProbability}, ${parameters[0]}, ${parameters[1]})`,
+      observations: (observationCount) =>
+        `rnorm(${observationCount}, ${parameters[0]}, ${parameters[1]})`,
+    }),
+    parameters: [
+      {
+        name: "mean",
+        description: `Mean, μ`,
+        domain: ``,
+        validation: real,
+        symbol: "μ",
+        defaultValue: 0,
+      },
+      {
+        name: "variance",
+        description: `Variance, σ^2`,
+        domain: `σ^2 > 0`,
+        validation: positiveRealNeqZero,
+        symbol: "σ^2",
+        defaultValue: 1,
+      },
+    ],
+  };
+}
+
+class Uniform extends ContinuousDistribution {
+  /**
+   * @param {float} min
+   * @param {float} max
+   */
+  constructor(min, max) {
+    super();
+    this.min = Ratio.fromDecimal(min);
+    this.minFloat = min;
+    this.max = Ratio.fromDecimal(max);
+    this.maxFloat = max;
+    this.domainSize = max - min;
+    this.prob = Ratio.ONE.divideBy(this.max.subtract(this.min)); // 1/(b-a)
+  }
+
+  /**
+   * // TODO: Decide if to use float or Ratio for x
+   * @param {Ratio} x
+   * @returns {Ratio} P(X = x) = 1/(b-a) if a <= x <= b, 0 otherwise
+   */
+  probability(x) {
+    if (x.lt(this.min) || x.gt(this.max)) {
+      return Ratio.ZERO;
+    }
+    return this.prob;
+  }
+
+  /**
+   * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
+   */
+  setDistribution() {
+    [this.pdfDistribution, this.cdfDistribution] = this.distributionSetRange(this.max, this.min);
+  }
+
+  /**
+   * @param {float} cumulativeProbability
+   * @requires 0 <= cumulativeProbability <= 1
+   * @returns {float} Quantile of distribution at cumulativeProbability
+   * X(F(X) = cumulativeProbability) = (b-a)p + a
+   */
+  quantile(cumulativeProbability) {
+    return this.domainSize * cumulativeProbability + this.minFloat;
+  }
+
+  static settings = {
+    distribution: Uniform,
+    title: "Uniform",
+    interpretation: "An arbitrary outcome that lies between the bounds",
+    name: (parameters) => `Uniform distribution [a=${parameters[0]}, b=${parameters[1]}]`,
+    rCode: (parameters) => ({
+      pdf: `dunif(x, ${parameters[0]}, ${parameters[1]})`,
+      cdf: `punif(x, ${parameters[0]}, ${parameters[1]})`,
+      cdfReverse: `punif(x, ${parameters[0]}, ${parameters[1]}, lower.tail=FALSE)`,
+      quantile: (cumulativeProbability) =>
+        `qunif(${cumulativeProbability}, ${parameters[0]}, ${parameters[1]})`,
+      observations: (observationCount) =>
+        `runif(${observationCount}, ${parameters[0]}, ${parameters[1]})`,
+    }),
+    parameters: [
+      {
+        name: "min",
+        description: `Min, a`,
+        domain: ``,
+        validation: real,
+        symbol: "a",
+        defaultValue: 0,
+      },
+      {
+        name: "max",
+        description: `Max, b`,
+        domain: `a < b`, // NOTE: This condition is not checked
+        validation: real,
+        symbol: "b",
+        defaultValue: 1,
+      },
+    ],
+  };
+}
+
+class Exponential extends ContinuousDistribution {
+  /**
+   * @param {float} rate
+   * @requires rate > 0
+   */
+  constructor(rate) {
+    super();
+    this.rate = Ratio.fromDecimal(rate);
+    this.rateFloat = rate;
+  }
+
+  /**
+   * // TODO: Decide if to use float or Ratio for x
+   * @param {Ratio} x
+   * @returns {Ratio} P(X = x) = lambda exp(-lambda x)
+   */
+  probability(x) {
+    return Ratio.fromDecimal(Math.E ** -this.rate.times(x).toFixed(ESTIMATE_PRECISION)).times(
+      this.rate
+    );
+  }
+
+  /**
+   * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
+   */
+  setDistribution() {
+    const maxX = Ratio.fromDecimal(this.quantile(0.99));
+    const increment = maxX.divideBy(Ratio.fromInt(this.DATAPOINTS - 1)).toFixed(ESTIMATE_PRECISION);
+    const roundedIncrement = Number(increment).toPrecision(
+      ContinuousDistribution.PREFERRED_X_PRECISION
+    );
+    [this.pdfDistribution, this.cdfDistribution] = this.distributionSetIncrement(
+      Ratio.fromDecimal(Number(roundedIncrement))
+    );
+  }
+
+  /**
+   * @param {float} cumulativeProbability
+   * @requires 0 <= cumulativeProbability <= 1
+   * @returns {float} Quantile of distribution at cumulativeProbability
+   * X(F(X) = cumulativeProbability) = -ln(1 - p)/lambda
+   */
+  quantile(cumulativeProbability) {
+    return -Math.log(1 - cumulativeProbability) / this.rateFloat;
+  }
+
+  static settings = {
+    distribution: Exponential,
+    title: "Exponential",
+    interpretation: "An arbitrary outcome that lies between the bounds",
+    name: (parameters) => `Exponential distribution [λ=${parameters[0]}]`,
+    rCode: (parameters) => ({
+      pdf: `dexp(x, ${parameters[0]})`,
+      cdf: `pexp(x, ${parameters[0]})`,
+      cdfReverse: `pexp(x, ${parameters[0]}}, lower.tail=FALSE)`,
+      quantile: (cumulativeProbability) => `qexp(${cumulativeProbability}, ${parameters[0]})`,
+      observations: (observationCount) => `rexp(${observationCount}, ${parameters[0]})`,
+    }),
+    parameters: [
+      {
+        name: "rate",
+        description: `Rate, λ`,
+        domain: `λ > 0`,
+        validation: positiveRealNeqZero,
+        symbol: "λ",
+        defaultValue: 1,
       },
     ],
   };
@@ -750,4 +1303,7 @@ export const distributionSettings = {
   geometric: Geometric.settings,
   negativeBinomial: NegativeBinomial.settings,
   hypergeometric: Hypergeometric.settings,
+  normal: Normal.settings,
+  uniform: Uniform.settings,
+  exponential: Exponential.settings,
 };

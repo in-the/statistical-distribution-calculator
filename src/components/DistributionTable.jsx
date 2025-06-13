@@ -14,7 +14,7 @@ export function copyText(e, text) {
     });
 }
 
-export default function DistributionTable({ pdf, cdf, name, precision, rCode }) {
+export default function DistributionTable({ pdf, cdf, name, precision, rCode, type }) {
   const [exactDisplay, setExactDisplay] = useState(false);
 
   function displayRatio(ratio) {
@@ -79,14 +79,23 @@ export default function DistributionTable({ pdf, cdf, name, precision, rCode }) 
         </tr>
       </thead>
       <tbody>
-        {cdf.map((cum, index) => (
-          <tr key={index}>
-            <td>{index}</td>
-            <td>{displayRatio(pdf[index])}</td>
-            <td>{displayRatio(cum)}</td>
-            <td>{displayRatio(Ratio.ONE.subtract(cum))}</td>
-          </tr>
-        ))}
+        {type === "discrete"
+          ? cdf.map((cum, index) => (
+              <tr key={index}>
+                <td>{index}</td>
+                <td>{displayRatio(pdf[index])}</td>
+                <td>{displayRatio(cum)}</td>
+                <td>{displayRatio(Ratio.ONE.subtract(cum))}</td>
+              </tr>
+            ))
+          : cdf.map(([x, cum], index) => (
+            <tr key={index}>
+                <td>{x}</td>
+                <td>{displayRatio(pdf[index][1])}</td>
+                <td>{displayRatio(cum)}</td>
+                <td>{displayRatio(Ratio.ONE.subtract(cum))}</td>
+              </tr>
+            ))}
       </tbody>
     </table>
   );

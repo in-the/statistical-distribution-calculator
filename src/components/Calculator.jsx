@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
 import DistributionTable, { copyText } from "./DistributionTable";
-import DiscreteGraph from "./DiscreteGraph";
-import { positiveInteger, summaryLegend } from "math/distribution";
+import DistributionGraph from "./DistributionGraph";
+import { positiveInteger, positiveIntegerMin, summaryLegend } from "math/distribution";
 
 export const PRECISION = 5;
+const OBSERVATION_PRECISION = 2;
 
-function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
+function ParameterInput({
+  settings,
+  calculate,
+  getQuantile,
+  getObservations,
+  distribution,
+  setDatapoints,
+  numDatapoints,
+  setNumDatapoints,
+}) {
   const [parameters, setParameters] = useState([]);
   const [cumulativeProbability, setCumulativeProbability] = useState(0.5);
   const [quantile, setQuantile] = useState();
@@ -43,20 +53,42 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
               <td>{p.domain}</td>
               {index === settings.parameters.length - 1 && (
                 <td>
-                  <input
-                    type="button"
-                    value="Calculate"
-                    name="calculateButton"
-                    onClick={() => calculate(parameters)}
-                  />
+                  <button name="calculateButton" onClick={() => calculate(parameters)}>
+                    Calculate
+                  </button>
                 </td>
               )}
             </tr>
           ))}
 
+          {distribution && distribution.TYPE === "continuous" && (
+            <tr className="separate">
+              <td>
+                <label htmlFor="datapoints">Number of datapoints</label>
+              </td>
+              <td>
+                <input
+                  name="datapoints"
+                  id="datapoints"
+                  value={numDatapoints}
+                  autoComplete="off"
+                  onChange={(e) => setNumDatapoints(e.target.value)}
+                />
+              </td>
+              <td>An integer {">"} 0</td>
+              <td>
+                <button name="setDatapointsButton" onClick={() => setDatapoints(numDatapoints)}>
+                  Set datapoints
+                </button>
+              </td>
+            </tr>
+          )}
+
           <tr className="separate">
             <td>
-              Cumulative probability, F(<var>X</var>)
+              <label htmlFor="FX">
+                Cumulative probability, F(<var>X</var>)
+              </label>
             </td>
             <td>
               <input
@@ -71,9 +103,7 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
               (0 ≤ F(<var>X</var>) ≤ 1)
             </td>
             <td>
-              <input
-                type="button"
-                value="Get quantile"
+              <button
                 name="quantileButton"
                 onClick={() => {
                   calculate(parameters, (newDistribution) => {
@@ -84,25 +114,29 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
                     if (quantile === false) {
                       return;
                     }
-                    setQuantile(quantile);
+                    setQuantile(quantile.toFixed(PRECISION));
                     setQuantileCode(
                       settings.rCode(parameters).quantile(Number(cumulativeProbability))
                     );
                   });
                 }}
-              />
+              >
+                Get quantile
+              </button>
             </td>
             <td>
-              <span className="r-code" onClick={(e) => copyText(e,quantileCode)}>
+              <span className="r-code" onClick={(e) => copyText(e, quantileCode)}>
                 {quantileCode}
               </span>
-              {typeof quantile === "number" ? " = " : ""}
+              {quantile ? " = " : ""}
             </td>
             <td>{quantile}</td>
           </tr>
           <tr>
             <td>
-              Number of observations, <var>k</var>
+              <label htmlFor="k">
+                Number of observations, <var>k</var>
+              </label>
             </td>
             <td>
               <input
@@ -117,9 +151,7 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
               (<var>k</var> an integer {">"} 0)
             </td>
             <td>
-              <input
-                type="button"
-                value="Generate observations"
+              <button
                 name="generateRandomButton"
                 onClick={() => {
                   calculate(parameters, (newDistribution) => {
@@ -131,7 +163,9 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
                     setObservationCode(settings.rCode(parameters).observations(observationCount));
                   });
                 }}
-              />
+              >
+                Generate observations
+              </button>
             </td>
           </tr>
         </tbody>
@@ -139,7 +173,7 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
 
       <div className="observations">
         <div className="legend">
-          <span className="r-code" onClick={(e) => copyText(e,observationCode)}>
+          <span className="r-code" onClick={(e) => copyText(e, observationCode)}>
             {observationCode}
           </span>
           {observations.length ? " = " : ""}
@@ -150,11 +184,12 @@ function ParameterInput({ settings, calculate, getQuantile, getObservations }) {
   );
 }
 
-export default function DiscreteDistributionCalculator({ settings }) {
+export default function DistributionCalculator({ settings }) {
   const [parameters, setParameters] = useState([]);
-  const [distribution, setDistribution] = useState();
+  const [distribution, setDistribution] = useState(undefined);
   const [pdf, setPdf] = useState([]);
   const [cdf, setCdf] = useState([]);
+  const [numDatapoints, setNumDatapoints] = useState();
 
   useEffect(() => {
     setParameters(settings.parameters.map((parameter) => parameter.defaultValue));
@@ -162,14 +197,17 @@ export default function DiscreteDistributionCalculator({ settings }) {
       ...settings.parameters.map((parameter) => parameter.defaultValue)
     );
     setDistribution(newDistribution);
+    if (newDistribution.TYPE === "continuous") {
+      if (numDatapoints === undefined) {
+        setNumDatapoints(newDistribution.DATAPOINTS);
+      } else {
+        newDistribution.DATAPOINTS = numDatapoints;
+      }
+    }
     setPdf(newDistribution.pdf());
     setCdf(newDistribution.cdf());
   }, [settings]);
 
-  /**
-   * @param {int} newSize Checks newSize is an integer > 0
-   * @param {float} newProb Checks 0 <= newProb <= 1
-   */
   function calculate(newParameters, after = () => {}) {
     if (parameters.every((parameter, i) => parameter === newParameters[i])) {
       after(distribution);
@@ -188,6 +226,9 @@ export default function DiscreteDistributionCalculator({ settings }) {
 
     const newDistribution = new settings.distribution(...newParameters);
     setDistribution(newDistribution);
+    if (newDistribution.TYPE === "continuous") {
+      setNumDatapoints(newDistribution.DATAPOINTS);
+    }
 
     // I'd like to call these after setDistribution finishes updating, instead of having to pass newDistribution manually
     // But I can't figure out how to do this.
@@ -224,13 +265,37 @@ export default function DiscreteDistributionCalculator({ settings }) {
     if (!positiveInteger(count, "k")) {
       return false;
     }
-    return distribution.observe(count);
+    const observations = distribution.observe(count);
+    if (distribution.TYPE === "continuous") {
+      observations.map((x) => x.toFixed(OBSERVATION_PRECISION));
+    }
+    return observations;
+  }
+
+  function setDatapoints(n) {
+    if (!positiveIntegerMin(n, "Number of datapoints", 2)) {
+      return;
+    }
+    distribution.DATAPOINTS = Number(n);
+    distribution.setDistribution();
+    setPdf(distribution.pdf());
+    setCdf(distribution.cdf());
   }
 
   return (
     <div>
-      {/* {console.log(Ratio.E.pow(Ratio.fromNumber(1.1)))} */}
-      <ParameterInput {...{ settings, calculate, getQuantile, getObservations }} />
+      <ParameterInput
+        {...{
+          settings,
+          calculate,
+          getQuantile,
+          getObservations,
+          distribution,
+          setDatapoints,
+          numDatapoints,
+          setNumDatapoints,
+        }}
+      />
 
       <div className="output-container">
         <DistributionTable
@@ -240,18 +305,23 @@ export default function DiscreteDistributionCalculator({ settings }) {
             name: settings.name(parameters),
             precision: PRECISION,
             rCode: settings.rCode(parameters),
+            type: distribution ? distribution.TYPE : "",
           }}
         />
         <div className="graph-container">
-          <DiscreteGraph
-            distribution={pdf.map((x) => x.toFixed(PRECISION))}
+          <DistributionGraph
+            distribution={pdf}
             title={`${settings.title} PDF`}
             label="P(X = x)"
+            precision={PRECISION}
+            type={distribution ? distribution.TYPE : ""}
           />
-          <DiscreteGraph
-            distribution={cdf.map((x) => x.toFixed(PRECISION))}
+          <DistributionGraph
+            distribution={cdf}
             title={`${settings.title} CDF`}
             label="P(X ≤ x)"
+            precision={PRECISION}
+            type={distribution ? distribution.TYPE : ""}
           />
         </div>
       </div>

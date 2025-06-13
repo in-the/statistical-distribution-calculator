@@ -264,7 +264,7 @@ class Binomial extends DiscreteDistribution {
     title: "Binomial",
     interpretation:
       "Number of success in a sequence of n independent experiments with success of probability p, failure of probability q = 1 - p",
-    name: (parameters) => `Binomial distribution (n=${parameters[0]}, p=${parameters[1]})`,
+    name: (parameters) => `B(n=${parameters[0]}, p=${parameters[1]})`,
     rCode: (parameters) => ({
       pdf: `dbinom(x, ${parameters[0]}, ${parameters[1]})`,
       cdf: `pbinom(x, ${parameters[0]}, ${parameters[1]})`,
@@ -368,7 +368,7 @@ class Poisson extends DiscreteDistribution {
     title: "Poisson",
     interpretation:
       "Number of events occurring in an interval of time, if these events occur with a known constant mean rate λ, and occur independently of the time since the last event",
-    name: (parameters) => `Poisson distribution (λ=${parameters[0]})`,
+    name: (parameters) => `Pois(λ=${parameters[0]})`,
     rCode: (parameters) => ({
       pdf: `dpois(x, ${parameters[0]})`,
       cdf: `ppois(x, ${parameters[0]})`,
@@ -470,7 +470,7 @@ class Geometric extends DiscreteDistribution {
     title: "Geometric",
 
     interpretation: "Number of failures before the first success, with success of probability p",
-    name: (parameters) => `Geometric distribution (p=${parameters[0]})`,
+    name: (parameters) => `Geom(p=${parameters[0]})`,
     rCode: (parameters) => ({
       pdf: `dgeom(x, ${parameters[0]})`,
       cdf: `pgeom(x, ${parameters[0]})`,
@@ -590,7 +590,7 @@ class NegativeBinomial extends DiscreteDistribution {
 
     interpretation:
       "Number of failures in a sequence of independent and identically distributed Bernoulli trials with success of probability p, before a fixed number r of scucesses occur",
-    name: (parameters) => `Negative Binomial distribution (r=${parameters[0]}, p=${parameters[1]})`,
+    name: (parameters) => `NB(r=${parameters[0]}, p=${parameters[1]})`,
     rCode: (parameters) => ({
       pdf: `dnbinom(x, ${parameters[0]}, ${parameters[1]})`,
       cdf: `pnbinom(x, ${parameters[0]}, ${parameters[1]})`,
@@ -711,7 +711,7 @@ class Hypergeometric extends DiscreteDistribution {
     interpretation:
       "Number of successes in n draws, without replacement, from a population of size N with exactly K objects with the success feature",
     name: (parameters) =>
-      `Hypergeometric distribution (N=${parameters[0]}, K=${parameters[1]}, n=${parameters[2]})`,
+      `Hypergeometric(N=${parameters[0]}, K=${parameters[1]}, n=${parameters[2]})`,
     rCode: (parameters) => ({
       pdf: `dhyper(x, ${parameters[1]}, ${parameters[0] - parameters[1]}, ${parameters[2]})`,
       cdf: `phyper(x, ${parameters[1]}, ${parameters[0] - parameters[1]}, ${parameters[2]})`,
@@ -1116,7 +1116,7 @@ class Normal extends ContinuousDistribution {
     title: "Normal",
     interpretation:
       "The central limit theorem states that, under appropriate conditions, the distribution of a normalized version of the sample mean converges to a standard normal distribution",
-    name: (parameters) => `Normal distribution (μ=${parameters[0]}, σ^2=${parameters[1]})`,
+    name: (parameters) => `N(μ=${parameters[0]}, σ^2=${parameters[1]})`,
     rCode: (parameters) => ({
       pdf: `dnorm(x, ${parameters[0]}, ${parameters[1]})`,
       cdf: `pnorm(x, ${parameters[0]}, ${parameters[1]})`,
@@ -1195,7 +1195,7 @@ class Uniform extends ContinuousDistribution {
     distribution: Uniform,
     title: "Uniform",
     interpretation: "An arbitrary outcome that lies between the bounds",
-    name: (parameters) => `Uniform distribution [a=${parameters[0]}, b=${parameters[1]}]`,
+    name: (parameters) => `U[a=${parameters[0]}, b=${parameters[1]}]`,
     rCode: (parameters) => ({
       pdf: `dunif(x, ${parameters[0]}, ${parameters[1]})`,
       cdf: `punif(x, ${parameters[0]}, ${parameters[1]})`,
@@ -1276,7 +1276,7 @@ class Exponential extends ContinuousDistribution {
     distribution: Exponential,
     title: "Exponential",
     interpretation: "An arbitrary outcome that lies between the bounds",
-    name: (parameters) => `Exponential distribution [λ=${parameters[0]}]`,
+    name: (parameters) => `Exp(λ=${parameters[0]})`,
     rCode: (parameters) => ({
       pdf: `dexp(x, ${parameters[0]})`,
       cdf: `pexp(x, ${parameters[0]})`,

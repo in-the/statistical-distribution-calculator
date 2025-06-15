@@ -384,7 +384,6 @@ export default class Ratio {
    * @param {number | bigint} n The number of decimal places to return.
    */
   toFixed(n) {
-    // TODO: Fix this so that it rounds the last digit rather than truncating
     if (simplify(this.numerator, this.denominator).numerator < 0) {
       return "-" + this.abs().toFixed(n);
     }

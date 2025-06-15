@@ -152,11 +152,38 @@ class DiscreteDistribution {
    * @returns {array[int]} Array of <count> random observations from distribution
    */
   observe(count = 1) {
+    if (!this.observations) {
+      this.observations = this.cdf().map(x => 0);
+      this.observations.count = 0;
+    }
+
     const observations = [];
     for (let i = 0; i < count; i++) {
-      observations.push(this.quantile(Math.random()));
+      const observation = this.quantile(Math.random());
+      observations.push(observation);
+      this.observations[observation]
+        ? this.observations[observation]++
+        : (this.observations[observation] = 1);
+      this.observations.count++;
     }
     return observations;
+  }
+
+  observationFrequency() {
+    return [this.observations, this.observations.map((count) => count / this.observations.count)];
+  }
+
+  observationCumulative() {
+    const observationCumulative = this.observations.map(
+      (
+        (accumulation) => (count) =>
+          (accumulation += count)
+      )(0)
+    );
+    return [
+      observationCumulative,
+      observationCumulative.map((count) => count / this.observations.count),
+    ];
   }
 }
 
@@ -325,6 +352,7 @@ class Poisson extends DiscreteDistribution {
   /**
    * @param {int} x
    * @returns {Ratio} P(X = x) = lambda^k * e^-lambda / k!
+   * TODO: Problem when lambda >= 14??
    */
   probability(x) {
     return this.lambdaK(x)
@@ -761,6 +789,7 @@ class ContinuousDistribution {
   TYPE = "continuous";
   static MAX_X_PRECISION = 5;
   static PREFERRED_X_PRECISION = 1;
+  observations = [];
 
   /**
    * @param {Ratio} maxX
@@ -954,6 +983,7 @@ class ContinuousDistribution {
     for (let i = 0; i < count; i++) {
       observations.push(this.quantile(Math.random()));
     }
+    this.observations.push(...observations);
     return observations;
   }
 
@@ -1108,6 +1138,7 @@ class Normal extends ContinuousDistribution {
     if (count % 2) {
       observations.pop();
     }
+    this.observations.push(...observations)
     return observations;
   }
 

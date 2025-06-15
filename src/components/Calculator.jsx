@@ -15,6 +15,7 @@ function ParameterInput({
   setDatapoints,
   numDatapoints,
   setNumDatapoints,
+  reset,
 }) {
   const [parameters, setParameters] = useState([]);
   const [cumulativeProbability, setCumulativeProbability] = useState(0.5);
@@ -114,7 +115,7 @@ function ParameterInput({
                     if (quantile === false) {
                       return;
                     }
-                    setQuantile(quantile.toFixed(PRECISION));
+                    setQuantile(Number(quantile.toFixed(PRECISION)));
                     setQuantileCode(
                       settings.rCode(parameters).quantile(Number(cumulativeProbability))
                     );
@@ -179,6 +180,13 @@ function ParameterInput({
           {observations.length ? " = " : ""}
         </div>
         <div>{observations.join(", ")}</div>
+        {observations.length ? (
+          <button name="resetButton" id="reset-button" onClick={reset}>
+            Clear
+          </button>
+        ) : (
+          ""
+        )}
       </div>
     </div>
   );
@@ -190,6 +198,8 @@ export default function DistributionCalculator({ settings }) {
   const [pdf, setPdf] = useState([]);
   const [cdf, setCdf] = useState([]);
   const [numDatapoints, setNumDatapoints] = useState();
+  const [observations, setObservations] = useState([[], []]); // [[float] observationFrequency to overlay on pdf graph, [float] observationCumulative to overlay on cdf graph]
+  const [quantile, setQuantile] = useState([]); // [float p cumulative probability, float corresponding x such that P(X<=x) = p]
 
   useEffect(() => {
     setParameters(settings.parameters.map((parameter) => parameter.defaultValue));
@@ -206,6 +216,8 @@ export default function DistributionCalculator({ settings }) {
     }
     setPdf(newDistribution.pdf());
     setCdf(newDistribution.cdf());
+    setObservations([[], []]);
+    setQuantile([]);
   }, [settings]);
 
   function calculate(newParameters, after = () => {}) {
@@ -253,7 +265,10 @@ export default function DistributionCalculator({ settings }) {
       alert("F(X) must be in range (0, 1)");
       return false;
     }
-    return distribution.quantile(cumulativeProbability);
+
+    const quantile = distribution.quantile(cumulativeProbability);
+    setQuantile([cumulativeProbability, quantile]);
+    return quantile;
   }
 
   /**
@@ -268,6 +283,9 @@ export default function DistributionCalculator({ settings }) {
     const observations = distribution.observe(count);
     if (distribution.TYPE === "continuous") {
       observations.map((x) => x.toFixed(OBSERVATION_PRECISION));
+      setObservations([distribution.observations, distribution.observations]);
+    } else {
+      setObservations([distribution.observationFrequency(), distribution.observationCumulative()]);
     }
     return observations;
   }
@@ -282,6 +300,11 @@ export default function DistributionCalculator({ settings }) {
     setCdf(distribution.cdf());
   }
 
+  function reset() {
+    setObservations([[], []]);
+    setQuantile([]);
+  }
+
   return (
     <div>
       <ParameterInput
@@ -294,6 +317,7 @@ export default function DistributionCalculator({ settings }) {
           setDatapoints,
           numDatapoints,
           setNumDatapoints,
+          reset,
         }}
       />
 
@@ -311,6 +335,7 @@ export default function DistributionCalculator({ settings }) {
         <div className="graph-container">
           <DistributionGraph
             distribution={pdf}
+            observations={observations[0]}
             title={`${settings.title} PDF`}
             label="P(X = x)"
             precision={PRECISION}
@@ -318,6 +343,8 @@ export default function DistributionCalculator({ settings }) {
           />
           <DistributionGraph
             distribution={cdf}
+            observations={observations[1]}
+            quantile={quantile}
             title={`${settings.title} CDF`}
             label="P(X ≤ x)"
             precision={PRECISION}

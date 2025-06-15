@@ -13,7 +13,8 @@ table th {
   border-collapse: collapse;
 }
 
-select, button {
+select,
+button {
   cursor: pointer;
 }
 
@@ -38,8 +39,10 @@ select, button {
   padding-bottom: 0.5rem;
 }
 
-.input-table .separate td {
+.input-table .separate {
   border-top: solid thin #aaa;
+}
+.input-table .separate td {
   padding-top: 0.5rem;
 }
 
@@ -61,6 +64,10 @@ select, button {
 
 .observations * {
   flex-shrink: 1;
+}
+
+.observations #reset-button {
+  align-self: flex-start;
 }
 
 #exact-toggle-label,

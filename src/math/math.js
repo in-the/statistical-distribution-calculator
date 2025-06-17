@@ -130,7 +130,7 @@ export function definiteIntegral(func, min, max, intervals = 10) {
 /**
  * Improper integral of func from min to +Infinity
  * Uses trapezoid with correction, from https://www.sciencedirect.com/science/article/pii/009630039290010X
- * Seems to be accurate to 4 significant digits?
+ * Seems to be accurate to 4 significant digits? Appears to bias towards smaller result
  * @param {function} func (Ratio x) => Ratio f(x)
  * @param {Ratio} min
  * @param {Ratio} initialInterval
@@ -178,18 +178,56 @@ export function improperIntegral(
 }
 
 /**
- * @param {Ratio} z 
+ * Difficulty with integrating near 0 since it approaches infinity
+ * @param {Ratio} z
  * @returns {Ratio}
  */
 export function gamma(z) {
-  return improperIntegral((t) => t.pow(z.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)));
+  return improperIntegral(
+    (t) =>  t.pow(z.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+    Ratio.fromNumber(0.001),
+    Ratio.fromNumber(0.0001)
+  );
 }
 
 /**
- * @param {Ratio} s 
+ * Difficulty with integrating near 0 since it approaches infinity
+ * @param {Ratio} s
  * @param {Ratio} x
  * @returns {Ratio}
  */
 export function lowerIncompleteGamma(s, x) {
-  return definiteIntegral((t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)), Ratio.ZERO, x);
+  return definiteIntegral(
+    (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+    Ratio.fromNumber(0.0001),
+    Ratio.fromNumber(0.001)
+  )
+    .add(
+      definiteIntegral(
+        (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+        Ratio.fromNumber(0.001),
+        Ratio.fromNumber(0.01)
+      )
+    )
+    .add(
+      definiteIntegral(
+        (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+        Ratio.fromNumber(0.01),
+        Ratio.fromNumber(0.1)
+      )
+    )
+    .add(
+      definiteIntegral(
+        (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+        Ratio.fromNumber(0.1),
+        Ratio.fromNumber(1)
+      )
+    )
+    .add(
+      definiteIntegral(
+        (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+        Ratio.fromNumber(1),
+        x
+      )
+    );
 }

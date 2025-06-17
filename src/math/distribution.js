@@ -65,7 +65,7 @@ const ESTIMATE_PRECISION = 20;
 
 class DiscreteDistribution {
   TYPE = "discrete";
-  PRECISION = 5
+  PRECISION = 5;
 
   /**
    * @param {int} max
@@ -890,9 +890,15 @@ class ContinuousDistribution {
   /**
    * Requires explicit this.quantile(p) function
    * @param {float} quantile
+   * @param {Ratio} minX
    * @returns [[[float x, Ratio f(x)]] pdf, [[float x, Ratio F(x)]] cdf]
    */
-  distributionSetQuantile(quantile = 0.99) {
+  distributionSetQuantile(
+    minX = Ratio.ZERO,
+    quantile = 0.99,
+    minF = Ratio.ZERO,
+    calculateCdf = true
+  ) {
     const maxX = Ratio.fromNumber(this.quantile(quantile));
     const rawIncrement = maxX
       .divideBy(Ratio.fromInt(this.DATAPOINTS - 1))
@@ -901,15 +907,16 @@ class ContinuousDistribution {
       ContinuousDistribution.PREFERRED_X_PRECISION
     );
     const increment = Ratio.fromNumber(Number(roundedIncrement));
-    return this.distributionSetIncrement(increment);
+    return this.distributionSetIncrement(increment, minX, minF, calculateCdf);
   }
 
   /**
    * @param {Ratio} increment
    * @param {Ratio} minX
+   * @param {Ratio} minF
    * @returns [[[float x, Ratio f(x)]] pdf, [[float x, Ratio F(x)]] cdf]
    */
-  distributionSetIncrement(increment, minX = Ratio.ZERO, minF = Ratio.ZERO) {
+  distributionSetIncrement(increment, minX = Ratio.ZERO, minF = Ratio.ZERO, calculateCdf = true) {
     const halfIncrement = increment.divideBy(Ratio.fromInt(2));
     const sixthIncrement = increment.divideBy(Ratio.fromInt(6));
 
@@ -923,6 +930,7 @@ class ContinuousDistribution {
     const minXFloat = Number(minX.toFixed(precision));
     const pdf = [[minXFloat, previous]];
     const cdf = [[minXFloat, minF]];
+    if (minX.lt(increment)) minX = Ratio.ZERO;
     for (
       let x = minX.add(increment), counter = 1;
       counter < this.DATAPOINTS;
@@ -931,13 +939,15 @@ class ContinuousDistribution {
       const p = this.probability(x);
       const xRounded = Number(x.toFixed(precision));
       pdf.push([xRounded, p]);
-      cumulative = this.probability(x.subtract(halfIncrement))
-        .times(Ratio.fromInt(4))
-        .add(previous)
-        .add(p)
-        .times(sixthIncrement)
-        .add(cumulative); // Simpson's rule
-      cdf.push([xRounded, cumulative]);
+      if (calculateCdf) {
+        cumulative = this.probability(x.subtract(halfIncrement))
+          .times(Ratio.fromInt(4))
+          .add(previous)
+          .add(p)
+          .times(sixthIncrement)
+          .add(cumulative); // Simpson's rule
+        cdf.push([xRounded, cumulative]);
+      }
       previous = p;
     }
     return [pdf, cdf];
@@ -968,6 +978,16 @@ class ContinuousDistribution {
   }
 
   /**
+   * Requires explicit this.cumulative(x) function
+   */
+  updateCdf() {
+    this.cdfDistribution = this.pdfDistribution.map(([x, _]) => [
+      x,
+      this.cumulative(Ratio.fromNumber(x)),
+    ]);
+  }
+
+  /**
    * Very rough estimate, depends on precision of CDF. Should override
    * @param {float} cumulativeProbability
    * @returns {float} Quantile of distribution at cumulativeProbability
@@ -993,10 +1013,28 @@ class ContinuousDistribution {
    * @requires this.cumulative(x) is defined
    * @returns {Ratio} Quantile of distribution at cumulativeProbability
    */
-  quantileEstimate(cumulativeProbability, precision = Ratio.fromNumber(0.01)) {
-    let estimate = Ratio.ZERO;
-    while (this.cumulative(estimate).lt(cumulativeProbability)) {
-      estimate = estimate.add(precision);
+  quantileEstimate(cumulativeProbability, estimate = Ratio.ONE) {
+    let min = Ratio.ZERO;
+    let max = undefined;
+    let cumulative = this.cumulative(estimate);
+    while (
+      cumulative
+        .subtract(cumulativeProbability)
+        .abs()
+        .gt(Ratio.fromNumber(10 ** -this.PRECISION))
+    ) {
+      if (cumulative.gt(cumulativeProbability)) {
+        max = estimate;
+        estimate = estimate.add(min).divideBy(Ratio.fromInt(2));
+      } else {
+        min = estimate;
+        if (typeof max === "undefined") {
+          estimate = estimate.times(Ratio.fromInt(2));
+        } else {
+          estimate = estimate.add(max).divideBy(Ratio.fromInt(2));
+        }
+      }
+      cumulative = this.cumulative(estimate);
     }
     return estimate;
   }
@@ -1363,7 +1401,8 @@ class Gamma extends ContinuousDistribution {
     this.shapeMinusOne = this.shape.subtract(Ratio.ONE); // α - 1
     const lambdaAlpha = Ratio.fromNumber(rate ** shape); // λ ^ α
     this.gammaAlpha = gamma(this.shape); // Γ(α)
-    this.correctionFactor = lambdaAlpha.divideBy(this.gammaAlpha);
+    this.correctionFactor = lambdaAlpha.divideBy(this.gammaAlpha); // λ^α/Γ(α)
+    console.log(this.correctionFactor.toFixed());
   }
 
   /**
@@ -1392,7 +1431,13 @@ class Gamma extends ContinuousDistribution {
    * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
    */
   setDistribution() {
-    [this.pdfDistribution, this.cdfDistribution] = this.distributionSetQuantile();
+    [this.pdfDistribution] = this.distributionSetQuantile(
+      Ratio.fromNumber(0.1),
+      0.95,
+      this.cumulative(Ratio.fromNumber(0.1)),
+      false
+    );
+    this.updateCdf();
   }
 
   /**
@@ -1402,16 +1447,9 @@ class Gamma extends ContinuousDistribution {
    * X(F(X) = cumulativeProbability p) = γ^-1(a, Γ(a)p)/b according to https://statproofbook.github.io/P/gam-qf.html
    */
   quantile(cumulativeProbability) {
-    let estimate;
-    if (typeof this.cdfDistribution === "undefined") {
-      estimate = this.quantileEstimate(
-        Ratio.fromNumber(cumulativeProbability),
-        Ratio.fromNumber(0.1)
-      );
-    } else {
-      estimate = Ratio.fromNumber(this.quantileRough(cumulativeProbability));
-    }
-    return Number(estimate.toFixed(ESTIMATE_PRECISION));
+    return Number(
+      this.quantileEstimate(Ratio.fromNumber(cumulativeProbability)).toFixed(ESTIMATE_PRECISION)
+    );
     // TODO: inverse doesn't work as expected
     // return Number(
     //   inverse(
@@ -1459,6 +1497,92 @@ class Gamma extends ContinuousDistribution {
   };
 }
 
+class ChiSquared extends ContinuousDistribution {
+  /**
+   * @param {float} degreesOfFreedom k
+   * @requires degreesOfFreedom > 0
+   */
+  constructor(degreesOfFreedom) {
+    super();
+    this.degreesOfFreedom = Ratio.fromNumber(degreesOfFreedom);
+    this.dfHalf = this.degreesOfFreedom.divideBy(Ratio.fromInt(2));
+    this.gammaDFHalf = gamma(this.dfHalf); // Γ(k/2)
+    this.correctionFactor = this.dfHalf.powOf(2).times(this.gammaDFHalf).divide(Ratio.ONE);
+  }
+
+  /**
+   * // TODO: Decide if to use float or Ratio for x
+   * @param {Ratio} x
+   * @returns {Ratio} P(X = x) = 1/2^(k/2)Γ(k/2) * x^(k/2-1) * exp(-x/2)
+   */
+  probability(x) {
+    return x
+      .pow(this.dfHalf.subtract(Ratio.ONE))
+      .times(x.divideBy(Ratio.fromInt(-2)).powOf(Math.E))
+      .times(this.correctionFactor);
+  }
+
+  /**
+   * // TODO: Decide if to use float or Ratio for x
+   * CDF
+   * @param {Ratio} x
+   * @returns {Ratio} P(X <= x) = γ(k/2,x/2)/Γ(k/2)
+   */
+  cumulative(x) {
+    return lowerIncompleteGamma(this.dfHalf, x.divideBy(Ratio.fromInt(2))).divideBy(
+      this.gammaDFHalf
+    );
+  }
+
+  /**
+   * Sets pdf <array[Ratio]> and cdf <array[Ratio]>
+   */
+  setDistribution() {
+    [this.pdfDistribution] = this.distributionSetQuantile(
+      Ratio.fromNumber(0.01),
+      0.95,
+      this.cumulative(Ratio.fromNumber(0.01)),
+      false
+    );
+    this.updateCdf();
+  }
+
+  /**
+   * @param {float} cumulativeProbability
+   * @requires 0 <= cumulativeProbability <= 1
+   * @returns {float} Quantile of distribution at cumulativeProbability
+   */
+  quantile(cumulativeProbability) {
+    return Number(
+      this.quantileEstimate(Ratio.fromNumber(cumulativeProbability)).toFixed(ESTIMATE_PRECISION)
+    );
+  }
+
+  static settings = {
+    distribution: ChiSquared,
+    title: "Chi-Squared",
+    interpretation: "Sum of the squares of k independent standard normal random variables",
+    name: (parameters) => `χ2(k=${parameters[0]})`,
+    rCode: (parameters) => ({
+      pdf: `dchisq(x, ${parameters[0]})`,
+      cdf: `pchisq(x, ${parameters[0]})`,
+      cdfReverse: `pchisq(x, ${parameters[0]}, lower.tail=FALSE)`,
+      quantile: (cumulativeProbability) => `qchisq(${cumulativeProbability}, ${parameters[0]})`,
+      observations: (observationCount) => `rchisq(${observationCount}, ${parameters[0]})`,
+    }),
+    parameters: [
+      {
+        name: "df",
+        description: `Degrees of freedom, k`,
+        domain: `k > 0`,
+        validation: positiveRealNeqZero,
+        symbol: "k",
+        defaultValue: 1,
+      },
+    ],
+  };
+}
+
 export const distributionSettings = {
   binomial: Binomial.settings,
   poisson: Poisson.settings,
@@ -1469,4 +1593,5 @@ export const distributionSettings = {
   uniform: Uniform.settings,
   exponential: Exponential.settings,
   gamma: Gamma.settings,
+  chiSquared: ChiSquared.settings,
 };

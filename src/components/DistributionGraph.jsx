@@ -69,8 +69,6 @@ function DiscreteGraph({ distribution, observations, quantile, title, label, pre
     },
   };
 
-  console.log(distribution);
-
   const datasets = [
     {
       label: label,

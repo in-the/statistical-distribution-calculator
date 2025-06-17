@@ -3,7 +3,6 @@ import DistributionTable, { copyText } from "./DistributionTable";
 import DistributionGraph from "./DistributionGraph";
 import { positiveInteger, positiveIntegerMin, summaryLegend } from "math/distribution";
 
-export const PRECISION = 5;
 const OBSERVATION_PRECISION = 2;
 
 function ParameterInput({
@@ -115,7 +114,7 @@ function ParameterInput({
                     if (quantile === false) {
                       return;
                     }
-                    setQuantile(Number(quantile.toFixed(PRECISION)));
+                    setQuantile(Number(quantile.toFixed(newDistribution.PRECISION)));
                     setQuantileCode(
                       settings.rCode(parameters).quantile(Number(cumulativeProbability))
                     );
@@ -208,7 +207,7 @@ export default function DistributionCalculator({ settings }) {
     );
     setDistribution(newDistribution);
     if (newDistribution.TYPE === "continuous") {
-      if (numDatapoints === undefined) {
+      if (typeof numDatapoints === "undefined") {
         setNumDatapoints(newDistribution.DATAPOINTS);
       } else {
         newDistribution.DATAPOINTS = numDatapoints;
@@ -327,7 +326,7 @@ export default function DistributionCalculator({ settings }) {
             pdf,
             cdf,
             name: settings.name(parameters),
-            precision: PRECISION,
+            precision: distribution && distribution.PRECISION,
             rCode: settings.rCode(parameters),
             type: distribution ? distribution.TYPE : "",
           }}
@@ -338,7 +337,7 @@ export default function DistributionCalculator({ settings }) {
             observations={observations[0]}
             title={`${settings.title} PDF`}
             label="P(X = x)"
-            precision={PRECISION}
+            precision={distribution && distribution.PRECISION}
             type={distribution ? distribution.TYPE : ""}
           />
           <DistributionGraph
@@ -347,7 +346,7 @@ export default function DistributionCalculator({ settings }) {
             quantile={quantile}
             title={`${settings.title} CDF`}
             label="P(X ≤ x)"
-            precision={PRECISION}
+            precision={distribution && distribution.PRECISION}
             type={distribution ? distribution.TYPE : ""}
           />
         </div>

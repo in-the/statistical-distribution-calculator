@@ -187,10 +187,20 @@ export default class Ratio {
    * Divide by.
    *
    * @param {Ratio} x The ratio to divide this one by.
-   * @returns {Ratio} A new ratio representing the divided value.
+   * @returns {Ratio} this / x. A new ratio representing the divided value.
    */
   divideBy(x) {
     return simplify(this.numerator * x.denominator, this.denominator * x.numerator);
+  }
+
+  /**
+   * Divide by.
+   *
+   * @param {Ratio} x The ratio to divide this one by.
+   * @returns {Ratio} x / this. A new ratio representing the divided value.
+   */
+  divide(x) {
+    return simplify(this.denominator * x.numerator, this.numerator * x.denominator);
   }
 
   /**
@@ -253,7 +263,7 @@ export default class Ratio {
     if (x < 0) return new Ratio(BigInt(1), BigInt(0));
 
     // Get an initial estimate using floating point math
-    const initialEstimate = Ratio.fromDecimal(Math.pow(Number(x), 1 / Number(n)));
+    const initialEstimate = Ratio.fromNumber(Math.pow(Number(x), 1 / Number(n)));
 
     const NUM_ITERATIONS = 3;
     return [...new Array(NUM_ITERATIONS)].reduce((r) => {
@@ -270,30 +280,77 @@ export default class Ratio {
 
   /**
    * Power.
+   * Estimate with floating point exponentiation
+   *
+   * @param {Ratio} n The exponent
+   * @returns {Ratio} this ^ n
+   */
+  pow(n, precision = 20) {
+    return Ratio.fromNumber(this.toFixed(precision) ** n.toFixed(precision));
+  }
+
+  /**
+   * Power.
+   * Estimate with floating point exponentiation
+   *
+   * @param {float} n The exponent
+   * @returns {Ratio} this ^ n
+   */
+  powFloat(n, precision = 20) {
+    return Ratio.fromNumber(this.toFixed(precision) ** n);
+  }
+
+  /**
+   * Power.
+   *
+   * @param {int} n The exponent
+   * @returns {Ratio} this ^ n
+   */
+  powInt(n) {
+    let cumulative = this;
+    for (let i = 1; i < n; i++) {
+      cumulative = cumulative.times(this);
+    }
+    return cumulative;
+  }
+
+  /**
+   * Power.
+   * Estimate with floating point exponentiation
+   *
+   * @param {float} n The base
+   * @returns {Ratio} n ^ this
+   */
+  powOf(n, precision = 20) {
+    return Ratio.fromNumber(n ** this.toFixed(precision));
+  }
+
+  /**
+   * Power.
    *
    * @param {Ratio} n The value to take this ratio to the power of.
    */
   // BigInt ** BigInt overflows, pow(n) DOES NOT WORK
-  pow(n) {
-    const { numerator: nNumerator, denominator: nDenominator } = simplify(
-      n.numerator,
-      n.denominator
-    );
-    const { numerator, denominator } = simplify(this.numerator, this.denominator);
-    if (nNumerator < 0) return this.invert().pow(n.abs());
-    if (nNumerator === BigInt(0)) return Ratio.one;
-    if (nDenominator === BigInt(1)) {
-      return new Ratio(numerator ** nNumerator, denominator ** nNumerator);
-    }
-    if (numerator < 0 && nDenominator !== BigInt(1)) {
-      return Ratio.infinity;
-    }
+  // pow(n) {
+  //   const { numerator: nNumerator, denominator: nDenominator } = simplify(
+  //     n.numerator,
+  //     n.denominator
+  //   );
+  //   const { numerator, denominator } = simplify(this.numerator, this.denominator);
+  //   if (nNumerator < 0) return this.invert().pow(n.abs());
+  //   if (nNumerator === BigInt(0)) return Ratio.one;
+  //   if (nDenominator === BigInt(1)) {
+  //     return new Ratio(numerator ** nNumerator, denominator ** nNumerator);
+  //   }
+  //   if (numerator < 0 && nDenominator !== BigInt(1)) {
+  //     return Ratio.infinity;
+  //   }
 
-    const { numerator: newN, denominator: newD } = Ratio.nthRoot(numerator, nDenominator).divideBy(
-      Ratio.nthRoot(denominator, nDenominator)
-    );
-    return new Ratio(newN ** nNumerator, newD ** nNumerator);
-  }
+  //   const { numerator: newN, denominator: newD } = Ratio.nthRoot(numerator, nDenominator).divideBy(
+  //     Ratio.nthRoot(denominator, nDenominator)
+  //   );
+  //   return new Ratio(newN ** nNumerator, newD ** nNumerator);
+  // }
 
   isInfinity() {
     return this.denominator === BigInt(0);
@@ -301,9 +358,17 @@ export default class Ratio {
 
   /**
    * Invert a ratio.
+   * @return {Ratio} 1 / this
    */
   invert() {
     return simplify(this.denominator, this.numerator);
+  }
+
+  /**
+   * @return {Ratio} -this
+   */
+  negative() {
+    return new Ratio(-this.numerator, this.denominator);
   }
 
   /**
@@ -342,20 +407,20 @@ export default class Ratio {
   }
 
   /**
-   * TODO: Note that in the webapp, x is converted from string to number by the interface, then is converted back from number to string here. Could be more efficient to just pass the original string. Since fromDecimal is only called in the constructor of the distributions, I'm not fussed about it at this stage. May need to correct in the future.
-   * 
+   * TODO: Note that in the webapp, x is converted from string to number by the interface, then is converted back from number to string here. Could be more efficient to just pass the original string. Since fromNumber is only called in the constructor of the distributions, I'm not fussed about it at this stage. May need to correct in the future.
+   *
    * Number to Ratio.
    * @param {number} x A number to convert to a ratio.
    */
-  static fromDecimal(x) {
-    const expParse = /(-?\d+)?\.?(\d+)?/;
-    const [, n = "0", decimals = ""] = x.toString().match(expParse) || [];
-    
-    return simplify(
-      BigInt(`${n}${decimals}`) * exp10(PRECISION - decimals.length),
-      exp10(PRECISION)
-    );
-  }
+  // static fromDecimal(x) {
+  //   const expParse = /(-?\d+)?\.?(\d+)?/;
+  //   const [, n = "0", decimals = ""] = x.toString().match(expParse) || [];
+
+  //   return simplify(
+  //     BigInt(`${n}${decimals}`) * exp10(PRECISION - decimals.length),
+  //     exp10(PRECISION)
+  //   );
+  // }
 
   /**
    * Number to Ratio.
@@ -382,8 +447,9 @@ export default class Ratio {
   /**
    * Convert to a string with a fixed number of decimal places.
    * @param {number | bigint} n The number of decimal places to return.
+   * @returns {string}
    */
-  toFixed(n) {
+  toFixed(n = 20) {
     if (simplify(this.numerator, this.denominator).numerator < 0) {
       return "-" + this.abs().toFixed(n);
     }
@@ -410,12 +476,12 @@ export default class Ratio {
     return `${intPart}.${leftPad(Number(n), "" + decimalPart)}`;
   }
 
-  decimalCount () {
+  decimalCount() {
     // Convert to String
     const numberAsString = Number(this.toFixed(20)).toString();
     // String Contains Decimal
-    if (numberAsString.includes('.')) {
-      return numberAsString.split('.')[1].length;
+    if (numberAsString.includes(".")) {
+      return numberAsString.split(".")[1].length;
     }
     // String Does Not Contain Decimal
     return 0;

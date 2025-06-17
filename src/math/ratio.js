@@ -112,8 +112,8 @@ function exp10(n) {
 export default class Ratio {
   static ZERO = Ratio.fromInt(0);
   static ONE = Ratio.fromInt(1);
-  static E = new Ratio(BigInt(52061284670617417), BigInt(19152276311294112));
-  static PI = new Ratio(BigInt(1783366216531), BigInt(567663097408));
+  static E = Ratio.fromNumber(Math.E);
+  static PI = Ratio.fromNumber(Math.PI);
 
   /**
    * Ratio Constructor.
@@ -233,12 +233,11 @@ export default class Ratio {
    * Round the value towards zero,  returning whole integer.
    */
   floor() {
-    const one = new Ratio(BigInt(1), BigInt(0));
-    const trunc = simplify(this.numerator / this.denominator, BigInt(1));
-    if (this.gte(one) || trunc.equals(this)) {
+    const trunc = new Ratio(this.numerator / this.denominator, BigInt(1));
+    if (this.gte(Ratio.ONE) || trunc.equals(this)) {
       return trunc;
     }
-    return trunc.minus(one);
+    return trunc.minus(Ratio.ONE);
   }
 
   /**
@@ -257,22 +256,22 @@ export default class Ratio {
    * @param {bigint} n The nth root to calculate.
    */
   // BigInt ** BigInt overflows, nthRoot() DOES NOT WORK
-  static nthRoot(x, n) {
-    if (x === BigInt(1)) return new Ratio(BigInt(1), BigInt(1));
-    if (x === BigInt(0)) return new Ratio(BigInt(0), BigInt(1));
-    if (x < 0) return new Ratio(BigInt(1), BigInt(0));
+  // static nthRoot(x, n) {
+  //   if (x === BigInt(1)) return new Ratio(BigInt(1), BigInt(1));
+  //   if (x === BigInt(0)) return new Ratio(BigInt(0), BigInt(1));
+  //   if (x < 0) return new Ratio(BigInt(1), BigInt(0));
 
-    // Get an initial estimate using floating point math
-    const initialEstimate = Ratio.fromNumber(Math.pow(Number(x), 1 / Number(n)));
+  //   // Get an initial estimate using floating point math
+  //   const initialEstimate = Ratio.fromNumber(Math.pow(Number(x), 1 / Number(n)));
 
-    const NUM_ITERATIONS = 3;
-    return [...new Array(NUM_ITERATIONS)].reduce((r) => {
-      return simplify(
-        n - BigInt(1) * r.numerator ** n + x * r.denominator ** n,
-        n * r.denominator * r.numerator ** (n - BigInt(1))
-      );
-    }, initialEstimate);
-  }
+  //   const NUM_ITERATIONS = 3;
+  //   return [...new Array(NUM_ITERATIONS)].reduce((r) => {
+  //     return simplify(
+  //       n - BigInt(1) * r.numerator ** n + x * r.denominator ** n,
+  //       n * r.denominator * r.numerator ** (n - BigInt(1))
+  //     );
+  //   }, initialEstimate);
+  // }
 
   abs() {
     return new Ratio(abs(this.numerator), abs(this.denominator));
@@ -323,6 +322,15 @@ export default class Ratio {
    */
   powOf(n, precision = 20) {
     return Ratio.fromNumber(n ** this.toFixed(precision));
+  }
+
+  /**
+   * @param {float} base 
+   * @returns {Ratio} log_base(this)
+   */
+  log(base = Math.E) {
+    const value = Math.log(Number(this.numerator) / Number(this.denominator));
+    return base === Math.E ? Ratio.fromNumber(value) : Ratio.fromNumber(value / Math.log(base))
   }
 
   /**

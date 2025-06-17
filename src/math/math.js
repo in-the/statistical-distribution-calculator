@@ -178,17 +178,57 @@ export function improperIntegral(
 }
 
 /**
+ * Lanczos approximation
+ * @param {Ratio} x
+ * @returns {Ratio}
+ */
+export function gamma(z) {
+  // Coefficients for g = 7, n = 9
+  const p = [
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+    -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6,
+    1.5056327351493116e-7,
+  ].map((x) => Ratio.fromNumber(x));
+  const g = Ratio.fromInt(7);
+
+  // if (z.lt(Ratio.fromNumber(0.5))) {
+  //   // Use reflection formula for negative x
+  //   console.log(Math.PI / Math.sin(z.times(Ratio.PI).toFixed()));
+  //   console.log(gamma(Ratio.ONE.subtract(z)).toFixed());
+  //   return Ratio.fromNumber(Math.sin(z.times(Ratio.PI).toFixed()))
+  //     .divide(Ratio.PI)
+  //     .times(gamma(Ratio.ONE.subtract(z)));
+  //   // return Math.PI / (Math.sin(Math.PI * x) * gamma(1 - x));
+  // }
+
+  z = z.subtract(Ratio.ONE);
+  let a = p[0];
+  for (let i = 1; i < p.length; i++) {
+    a = p[i].divideBy(z.add(Ratio.fromInt(i))).add(a);
+  }
+
+  z = z.add(Ratio.fromNumber(0.5));
+  const t = z.add(g);
+  return Ratio.PI.times(Ratio.fromInt(2))
+    .powFloat(0.5)
+    .times(t.pow(z))
+    .times(Ratio.E.pow(t.negative()))
+    .times(a);
+  // return Ratio.fromNumber(Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a);
+}
+
+/**
  * Difficulty with integrating near 0 since it approaches infinity
  * @param {Ratio} z
  * @returns {Ratio}
  */
-export function gamma(z) {
-  return improperIntegral(
-    (t) =>  t.pow(z.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
-    Ratio.fromNumber(0.001),
-    Ratio.fromNumber(0.0001)
-  );
-}
+// export function gamma(z) {
+//   return improperIntegral(
+//     (t) =>  t.pow(z.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+//     Ratio.fromNumber(0.001),
+//     Ratio.fromNumber(0.0001)
+//   );
+// }
 
 /**
  * Difficulty with integrating near 0 since it approaches infinity
@@ -196,38 +236,93 @@ export function gamma(z) {
  * @param {Ratio} x
  * @returns {Ratio}
  */
-export function lowerIncompleteGamma(s, x) {
-  return definiteIntegral(
-    (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
-    Ratio.fromNumber(0.0001),
-    Ratio.fromNumber(0.001)
-  )
-    .add(
-      definiteIntegral(
-        (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
-        Ratio.fromNumber(0.001),
-        Ratio.fromNumber(0.01)
-      )
-    )
-    .add(
-      definiteIntegral(
-        (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
-        Ratio.fromNumber(0.01),
-        Ratio.fromNumber(0.1)
-      )
-    )
-    .add(
-      definiteIntegral(
-        (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
-        Ratio.fromNumber(0.1),
-        Ratio.fromNumber(1)
-      )
-    )
-    .add(
-      definiteIntegral(
-        (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
-        Ratio.fromNumber(1),
-        x
-      )
-    );
+// export function lowerIncompleteGamma(s, x) {
+//   return definiteIntegral(
+//     (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+//     Ratio.fromNumber(0.0001),
+//     Ratio.fromNumber(0.001)
+//   )
+//     .add(
+//       definiteIntegral(
+//         (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+//         Ratio.fromNumber(0.001),
+//         Ratio.fromNumber(0.01)
+//       )
+//     )
+//     .add(
+//       definiteIntegral(
+//         (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+//         Ratio.fromNumber(0.01),
+//         Ratio.fromNumber(0.1)
+//       )
+//     )
+//     .add(
+//       definiteIntegral(
+//         (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+//         Ratio.fromNumber(0.1),
+//         Ratio.fromNumber(1)
+//       )
+//     )
+//     .add(
+//       definiteIntegral(
+//         (t) => t.pow(s.subtract(Ratio.ONE)).times(t.negative().powOf(Math.E)),
+//         Ratio.fromNumber(1),
+//         x
+//       )
+//     );
+// }
+
+// Series expansion
+function lowerIncompleteGammaSeriesExpansion(s, x, tolerance, maxIter) {
+  let term = s.divide(Ratio.ONE);
+  let sum = term;
+  for (let n = 1; n < maxIter; n++) {
+    term = term.times(x).divideBy(s.add(Ratio.fromInt(n)));
+    sum = sum.add(term);
+    if (term.lt(sum.times(tolerance))) break;
+  }
+  return sum.times(Ratio.E.pow(x.negative())).times(x.pow(s));
+}
+
+// Continued fraction (Lentz's method)
+function lowerIncompleteGammaContinuedFraction(s, x, tolerance, maxIter) {
+  const tiny = Ratio.fromNumber(1e-300);
+  const b0 = x.add(Ratio.ONE).subtract(s);
+  let f = b0.abs().lt(tiny) ? tiny : b0;
+  let C = f, D = Ratio.ZERO;
+  for (let n = 1; n < maxIter; n++) {
+    const N = Ratio.fromInt(n);
+    const a = s.subtract(N).times(N);
+    const b = Ratio.fromInt(2).times(N).add(b0);
+
+    C = a.divideBy(C).add(b);
+    if (C.abs().lt(tiny)) C = tiny;
+    D = a.times(D).add(b);
+    if (D.abs().lt(tiny)) D = tiny;
+    D = D.divide(Ratio.ONE);
+    const delta = C.times(D);
+    
+    f = f.times(delta);
+    if (delta.subtract(Ratio.ONE).abs().lt(tolerance)) break;
+  }
+  const Q = x.log().times(s).subtract(x).subtract(gamma(s).log()).powOf(Math.E).divideBy(f);
+  return gamma(s).times(Ratio.ONE.subtract(Q));
+}
+
+/**
+ * Series expansion when x<s+1 -> fast convergence
+ * Continued fraction (Lentz's method) when x≥s+1 -> more stable for large
+ * @param {Ratio} s
+ * @param {Ratio} x
+ * @param {Ratio} tolerance
+ * @param {int} maxIter
+ * @returns {Ratio}
+ */
+export function lowerIncompleteGamma(s, x, tolerance = Ratio.fromNumber(1e-10), maxIter = 1000) {
+  if (x.equals(Ratio.ZERO)) return Ratio.ZERO;
+  if (x.lt(s.add(Ratio.ONE))) {
+    return lowerIncompleteGammaSeriesExpansion(s, x, tolerance, maxIter);
+  } else {
+    return lowerIncompleteGammaContinuedFraction(s, x, tolerance, maxIter);
+  }
 }

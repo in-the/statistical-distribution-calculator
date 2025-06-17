@@ -1386,8 +1386,6 @@ class Exponential extends ContinuousDistribution {
 }
 
 class Gamma extends ContinuousDistribution {
-  PRECISION = 4;
-
   /**
    * @param {float} shape α
    * @param {float} rate λ
@@ -1433,7 +1431,7 @@ class Gamma extends ContinuousDistribution {
   setDistribution() {
     [this.pdfDistribution] = this.distributionSetQuantile(
       Ratio.fromNumber(0.1),
-      0.95,
+      0.99,
       this.cumulative(Ratio.fromNumber(0.1)),
       false
     );
@@ -1529,6 +1527,18 @@ class ChiSquared extends ContinuousDistribution {
    * @returns {Ratio} P(X <= x) = γ(k/2,x/2)/Γ(k/2)
    */
   cumulative(x) {
+    console.log(
+      1,
+      this.dfHalf.toFixed(5),
+      x.divideBy(Ratio.fromInt(2)).toFixed(5),
+      lowerIncompleteGamma(this.dfHalf, x.divideBy(Ratio.fromInt(2)))
+        .toFixed(5));
+    console.log(
+      2,
+      this.dfHalf.toFixed(5),
+      this.gammaDFHalf.toFixed(5),
+      lowerIncompleteGamma(this.dfHalf, x.divideBy(Ratio.fromInt(2))).divideBy(this.gammaDFHalf)
+    .toFixed(5));
     return lowerIncompleteGamma(this.dfHalf, x.divideBy(Ratio.fromInt(2))).divideBy(
       this.gammaDFHalf
     );
@@ -1539,9 +1549,9 @@ class ChiSquared extends ContinuousDistribution {
    */
   setDistribution() {
     [this.pdfDistribution] = this.distributionSetQuantile(
-      Ratio.fromNumber(0.01),
-      0.95,
-      this.cumulative(Ratio.fromNumber(0.01)),
+      Ratio.fromNumber(0.1),
+      0.99,
+      this.cumulative(Ratio.fromNumber(0.1)),
       false
     );
     this.updateCdf();

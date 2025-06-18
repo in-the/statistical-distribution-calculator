@@ -134,11 +134,17 @@ function ContinuousGraph({ distribution, observations, quantile, title, label, p
       }
     );
   }
+  let min = distribution[0][0];
+  if (min > 0 && min < 0.2) min = 0
+  let max = distribution[distribution.length - 1][0];
+  if (max > .8 && max < 1) max = 1;
   const options = {
     responsive: true,
     scales: {
       x: {
         type: "linear",
+        min: min,
+        max: max,
       },
       y: {
         type: "linear",

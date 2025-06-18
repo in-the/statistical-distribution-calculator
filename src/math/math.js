@@ -1,6 +1,6 @@
 /* global BigInt */
 
-import Ratio from "./ratio";
+import Ratio, { memoize } from "./ratio";
 
 /**
  * @param {int} n
@@ -178,11 +178,57 @@ export function improperIntegral(
 }
 
 /**
+ * Newton-Raphson method for approximating zeros/roots of real-valued functions
+ * @param {function (Ratio) => (Ratio)} func
+ * @param {function (Ratio) => (Ratio)} derivative
+ * @param {Ratio} initialGuess
+ * @param {Ratio} tolerance
+ * @param {int} maxIter
+ * @param {Ratio} lowerBound
+ * @param {Ratio} upperBound
+ * @returns
+ */
+export function newtonRaphson(
+  func, // function f(x) {Ratio} => {Ratio}
+  initialGuess, // initial x0
+  lowerBound = Ratio.NEGINFINITY,
+  upperBound = Ratio.INFINITY,
+  tolerance = Ratio.fromNumber(1e-8),
+  maxIter = 100,
+  derivative = undefined // optional: df/dx; if not provided, finite diff is used
+) {
+  let x = initialGuess;
+  const h = Ratio.fromNumber(1e-6)
+  const h2 = Ratio.fromNumber(2e-6)
+
+  for (let i = 0; i < maxIter; i++) {
+    let fx = func(x);
+    if (fx.abs().lt(tolerance)) return x;
+
+    let dfx;
+    if (derivative) {
+      dfx = derivative(x);
+    } else {
+      dfx = (func(x.add(h)).subtract(func(x.subtract(h)))).divideBy(h2);
+    }
+
+    if (dfx.equals(Ratio.ZERO)) break;
+
+    x = x.subtract(fx.divideBy(dfx))
+
+    // Clamp to bounds
+    x = x.max(lowerBound).min(upperBound);
+  }
+
+  return x;
+}
+
+/**
  * Lanczos approximation
- * @param {Ratio} x
+ * @param {Ratio} z
  * @returns {Ratio}
  */
-export function gamma(z) {
+function gammaLanczos(z) {
   // Coefficients for g = 7, n = 9
   const p = [
     0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
@@ -193,15 +239,13 @@ export function gamma(z) {
 
   // if (z.lt(Ratio.fromNumber(0.5))) {
   //   // Use reflection formula for negative x
-  //   console.log(Math.PI / Math.sin(z.times(Ratio.PI).toFixed()));
-  //   console.log(gamma(Ratio.ONE.subtract(z)).toFixed());
   //   return Ratio.fromNumber(Math.sin(z.times(Ratio.PI).toFixed()))
   //     .divide(Ratio.PI)
   //     .times(gamma(Ratio.ONE.subtract(z)));
   //   // return Math.PI / (Math.sin(Math.PI * x) * gamma(1 - x));
   // }
 
-  z = z.subtract(Ratio.ONE);
+  z = z.subtractOne();
   let a = p[0];
   for (let i = 1; i < p.length; i++) {
     a = p[i].divideBy(z.add(Ratio.fromInt(i))).add(a);
@@ -215,6 +259,21 @@ export function gamma(z) {
     .times(Ratio.E.pow(t.negative()))
     .times(a);
   // return Ratio.fromNumber(Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a);
+}
+
+/**
+ * Lanczos approximation
+ * @param {Ratio} z
+ * @returns {Ratio}
+ */
+export const gamma = memoize(gammaLanczos);
+
+/**
+ * @param {Ratio} z
+ * @returns {Ratio}
+ */
+function logGamma(z) {
+  return gamma(z).log();
 }
 
 /**
@@ -274,7 +333,7 @@ export function gamma(z) {
 
 // Series expansion
 function lowerIncompleteGammaSeriesExpansion(s, x, tolerance, maxIter) {
-  let term = s.divide(Ratio.ONE);
+  let term = s.invert();
   let sum = term;
   for (let n = 1; n < maxIter; n++) {
     term = term.times(x).divideBy(s.add(Ratio.fromInt(n)));
@@ -287,9 +346,10 @@ function lowerIncompleteGammaSeriesExpansion(s, x, tolerance, maxIter) {
 // Continued fraction (Lentz's method)
 function lowerIncompleteGammaContinuedFraction(s, x, tolerance, maxIter) {
   const tiny = Ratio.fromNumber(1e-300);
-  const b0 = x.add(Ratio.ONE).subtract(s);
+  const b0 = x.addOne().subtract(s);
   let f = b0.abs().lt(tiny) ? tiny : b0;
-  let C = f, D = Ratio.ZERO;
+  let C = f,
+    D = Ratio.ZERO;
   for (let n = 1; n < maxIter; n++) {
     const N = Ratio.fromInt(n);
     const a = s.subtract(N).times(N);
@@ -299,9 +359,9 @@ function lowerIncompleteGammaContinuedFraction(s, x, tolerance, maxIter) {
     if (C.abs().lt(tiny)) C = tiny;
     D = a.times(D).add(b);
     if (D.abs().lt(tiny)) D = tiny;
-    D = D.divide(Ratio.ONE);
+    D = D.invert();
     const delta = C.times(D);
-    
+
     f = f.times(delta);
     if (delta.subtract(Ratio.ONE).abs().lt(tolerance)) break;
   }
@@ -320,9 +380,191 @@ function lowerIncompleteGammaContinuedFraction(s, x, tolerance, maxIter) {
  */
 export function lowerIncompleteGamma(s, x, tolerance = Ratio.fromNumber(1e-10), maxIter = 1000) {
   if (x.equals(Ratio.ZERO)) return Ratio.ZERO;
-  if (x.lt(s.add(Ratio.ONE))) {
+  if (x.lt(s.addOne())) {
     return lowerIncompleteGammaSeriesExpansion(s, x, tolerance, maxIter);
   } else {
     return lowerIncompleteGammaContinuedFraction(s, x, tolerance, maxIter);
   }
+}
+
+/**
+ * @param {Ratio} a
+ * @param {Ratio} b
+ * @returns {Ratio}
+ */
+export function beta(a, b) {
+  return gamma(a)
+    .times(gamma(b))
+    .divideBy(gamma(a.add(b)));
+}
+
+/**
+ * @param {Ratio} a
+ * @param {Ratio} b
+ * @returns {Ratio}
+ */
+function logBeta(a, b) {
+  return logGamma(a)
+    .add(logGamma(b))
+    .subtract(logGamma(a.add(b)));
+}
+
+/**
+ * Too slow, so used floating point version instead
+ * @param {Ratio} x
+ * @param {Ratio} a
+ * @param {Ratio} b
+ * @returns {Ratio}
+ */
+function betaContinuedFractionRatio(x, a, b) {
+  // Continued fraction using Lentz’s algorithm
+  const maxIter = 200;
+  const tolerance = Ratio.fromNumber(3e-7);
+  const tiny = Ratio.fromNumber(1e-30);
+
+  const qab = a.add(b);
+  const qap = a.addOne();
+  const qam = a.subtractOne();
+  let c = Ratio.ONE;
+  let d = Ratio.ONE.subtract(qab.times(x).divideBy(qap));
+  if (d.abs().lt(tiny)) d = tiny;
+  d = d.invert();
+  let h = d;
+
+  for (let m = 1; m <= maxIter; m++) {
+    const m1 = Ratio.fromInt(m);
+    const m2 = Ratio.fromInt(2 * m);
+    // even step
+    let aa = b
+      .subtract(m1)
+      .times(m1)
+      .times(x)
+      .divideBy(qam.add(m2).times(a.add(m2)));
+    c = aa.divideBy(c).addOne();
+    if (c.abs().lt(tiny)) c = tiny;
+    d = aa.times(d).addOne();
+    if (d.abs().lt(tiny)) d = tiny;
+    d = d.invert();
+    h = h.times(d).times(c);
+
+    // odd step
+    aa = a
+      .add(m1)
+      .negative()
+      .times(qab.add(m1))
+      .times(x)
+      .divideBy(a.add(m2).times(qap.add(m2)));
+    c = aa.divideBy(c).addOne();
+    if (c.abs().lt(tiny)) c = tiny;
+    d = aa.times(d).addOne();
+    if (d.abs().lt(tiny)) d = tiny;
+    d = d.invert();
+    let del = c.times(d);
+    h = h.times(del);
+
+    if (del.subtractOne().abs().lt(tolerance)) break;
+  }
+
+  return h;
+}
+
+/**
+ * Ratio version is too slow, so used floating point version instead
+ * @param {Ratio} x
+ * @param {Ratio} a
+ * @param {Ratio} b
+ * @returns {Ratio}
+ */
+function betaContinuedFraction(xRatio, aRatio, bRatio) {
+  const x = xRatio.toValue();
+  const a = aRatio.toValue();
+  const b = bRatio.toValue();
+
+  // Continued fraction using Lentz’s algorithm
+  const MAX_ITER = 200;
+  const EPS = 3e-7;
+  const FPMIN = 1e-30;
+
+  let qab = a + b;
+  let qap = a + 1;
+  let qam = a - 1;
+  let c = 1.0;
+  let d = 1.0 - (qab * x) / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN;
+  d = 1.0 / d;
+  let h = d;
+
+  for (let m = 1; m <= MAX_ITER; m++) {
+    let m2 = 2 * m;
+    // even step
+    let aa = (m * (b - m) * x) / ((qam + m2) * (a + m2));
+    d = 1.0 + aa * d;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1.0 + aa / c;
+    if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1.0 / d;
+    h *= d * c;
+
+    // odd step
+    aa = (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2));
+    d = 1.0 + aa * d;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1.0 + aa / c;
+    if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1.0 / d;
+    let del = d * c;
+    h *= del;
+
+    if (Math.abs(del - 1.0) < EPS) break;
+  }
+
+  return Ratio.fromNumber(h);
+}
+
+/**
+ * Ix(a, b) = B(x;a,b) / B(a,b)
+ * @param {Ratio} x
+ * @param {Ratio} a
+ * @param {Ratio} b
+ * @returns {Ratio}
+ */
+export function regularisedIncompleteBeta(x, a, b) {
+  if (x.lte(Ratio.ZERO)) return Ratio.ZERO;
+  if (x.gte(Ratio.ONE)) return Ratio.ONE;
+
+
+  if (a.addOne().divideBy(a.add(b).add(Ratio.fromInt(2))).gte(x)){
+  const front = a
+    .times(x.log())
+    .add(b.times(Ratio.ONE.subtract(x).log()))
+    .subtract(logBeta(a, b))
+    .powOf(Math.E)
+    .divideBy(a);
+    return betaContinuedFraction(x, a, b).times(front);
+  } else {
+    return Ratio.ONE.subtract(regularisedIncompleteBeta(Ratio.ONE.subtract(x), b, a))
+  }
+}
+
+/**
+ * @param {Ratio} p
+ * @param {Ratio} a
+ * @param {Ratio} b
+ * @param {Ratio} tolerance
+ * @param {int} maxIter
+ * @returns {Ratio}
+ */
+export function regularisedIncompleteBetaInverse(
+  p,
+  a,
+  b,
+) {
+  if (p.lte(Ratio.ZERO)) return Ratio.ZERO;
+  if (p.gte(Ratio.ONE)) return Ratio.ONE;
+  return newtonRaphson(
+    (x) => regularisedIncompleteBeta(x, a, b).subtract(p),
+    a.add(b).divide(a),
+    Ratio.ZERO,
+    Ratio.ONE
+  )
 }

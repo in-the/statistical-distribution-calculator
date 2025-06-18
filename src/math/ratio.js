@@ -1,4 +1,7 @@
 // file: ratio.js
+// From blog: https://jrsinclair.com/articles/2020/sick-of-the-jokes-write-your-own-arbitrary-precision-javascript-math-library/
+// See code sandbox: https://codesandbox.io/p/sandbox/ratio-high-precision-math-hwnry?file=%2Fsrc%2Fratio.js
+
 /* global BigInt */
 const PRECISION = 100; // Precision for converting numbers to fractions. The higher this number, the slower everything gets.
 
@@ -20,7 +23,7 @@ const leftPad = (n, s) => [...new Array(Math.max(0, n - s.length))].map(() => "0
  * @param {F} f The function to memoize
  * @returns {F} A memoized version of f.
  */
-function memoize(f) {
+export function memoize(f) {
   const store = new Map();
   return function (...args) {
     const k = args.join("_⚮_");
@@ -71,6 +74,8 @@ function _gcd(a, b) {
 }
 const gcd = memoize(_gcd);
 
+// const MAX = BigInt(1e100);
+// const HALF_MAX = BigInt(1e50);
 /**
  * Simplify.
  *
@@ -84,7 +89,16 @@ function _simplify(numerator, denominator) {
   const sgn = sign(numerator) * sign(denominator);
   const n = abs(BigInt(numerator));
   const d = abs(denominator);
-  const f = gcd(n, d);
+  if (!d) {
+    if (n > 0) return Ratio.INFINITY;
+    return Ratio.NEGINFINITY;
+  }
+  let f = gcd(n, d);
+  // if (denominator > MAX && numerator > MAX) {
+  //   const numeratorLength = numerator.toString().length
+  //   const denominatorLength = denominator.toString().length
+  //   f = f > HALF_MAX ? f : numeratorLength > denominatorLength ? BigInt(Math.floor(denominatorLength * 2/3)) : BigInt(Math.floor(numeratorLength * 2/3));
+  // }
   return new Ratio((sgn * n) / f, d / f);
 }
 const simplify = memoize(_simplify);
@@ -114,6 +128,8 @@ export default class Ratio {
   static ONE = Ratio.fromInt(1);
   static E = Ratio.fromNumber(Math.E);
   static PI = Ratio.fromNumber(Math.PI);
+  static INFINITY = new Ratio(1n, 0n);
+  static NEGINFINITY = new Ratio(-1n, 0n);
 
   /**
    * Ratio Constructor.
@@ -128,48 +144,86 @@ export default class Ratio {
   /**
    * Equals.
    * @param {Ratio} other Another ratio to test for equality.
+   * @requires this !== INFINITY or NEGINFINITY
    * @returns {boolean} True if the two ratios are equivalent.
    */
   equals(other) {
-    const a = simplify(this.numerator, this.denominator);
-    const b = simplify(other.numerator, other.denominator);
-    return a.numerator === b.numerator && a.denominator === b.denominator;
+    return this.numerator * other.denominator === this.denominator * other.numerator;
+    // const a = simplify(this.numerator, this.denominator);
+    // const b = simplify(other.numerator, other.denominator);
+    // return a.numerator === b.numerator && a.denominator === b.denominator;
   }
 
   /**
    * Less than or equal to.
    * @param {Ratio} other Another ratio to compare to this one.
+   * @requires this !== INFINITY or NEGINFINITY
    * @returns {boolean} Returns true if this ratio is less than or equal to the other ratio.
    */
   lte(other) {
-    const { numerator: thisN, denominator: thisD } = simplify(this.numerator, this.denominator);
-    const { numerator: otherN, denominator: otherD } = simplify(other.numerator, other.denominator);
-    return thisN * otherD <= otherN * thisD;
+    if (other === Ratio.INFINITY) return true;
+    if (other === Ratio.NEGINFINITY) return false;
+    return this.numerator * other.denominator <= this.denominator * other.numerator;
+    // const { numerator: thisN, denominator: thisD } = simplify(this.numerator, this.denominator);
+    // const { numerator: otherN, denominator: otherD } = simplify(other.numerator, other.denominator);
+    // return thisN * otherD <= otherN * thisD;
   }
 
   /**
    * Less than.
    * @param {Ratio} other The other ratio to compare to this one.
+   * @requires this !== INFINITY or NEGINFINITY
+   * @return {boolean}
    */
   lt(other) {
-    return this.lte(other) && !this.equals(other);
+    if (other === Ratio.INFINITY) return true;
+    if (other === Ratio.NEGINFINITY) return false;
+    return this.numerator * other.denominator < this.denominator * other.numerator;
+    // return this.lte(other) && !this.equals(other);
   }
 
   /**
    * Greater than.
    * @param {Ratio} other The other ratio to compare this one against.
+   * @requires this !== INFINITY or NEGINFINITY
    * @return {boolean} True if this value is greater than the other value.
    */
   gt(other) {
-    return !this.lte(other);
+    if (other === Ratio.INFINITY) return false;
+    if (other === Ratio.NEGINFINITY) return true;
+    return this.numerator * other.denominator > this.denominator * other.numerator;
+    // return !this.lte(other);
   }
 
   /**
    * Greater than or equal to.
    * @param {Ratio} other The other ratio to compare to this one.
+   * @requires this !== INFINITY or NEGINFINITY
+   * @return {boolean}
    */
   gte(other) {
-    return this.gt(other) || this.equals(other);
+    if (other === Ratio.INFINITY) return false;
+    if (other === Ratio.NEGINFINITY) return true;
+    return this.numerator * other.denominator >= this.denominator * other.numerator;
+    // return this.gt(other) || this.equals(other);
+  }
+
+  /**
+   * Return larger value
+   * @param {Ratio} other The other ratio to compare to this one.
+   * @returns {Ratio}
+   */
+  max(other) {
+    return this.lt(other) ? other : this;
+  }
+
+  /**
+   * Return smaller value
+   * @param {Ratio} other The other ratio to compare to this one.
+   * @returns {Ratio}
+   */
+  min(other) {
+    return this.gt(other) ? other : this;
   }
 
   /**
@@ -215,6 +269,10 @@ export default class Ratio {
     );
   }
 
+  addOne() {
+    return new Ratio(this.numerator + this.denominator, this.denominator);
+  }
+
   /**
    * Subtract.
    * @param {Ratio} x The ratio to subtract from this one.
@@ -225,6 +283,10 @@ export default class Ratio {
       this.numerator * x.denominator - x.numerator * this.denominator,
       this.denominator * x.denominator
     );
+  }
+
+  subtractOne() {
+    return new Ratio(this.numerator - this.denominator, this.denominator);
   }
 
   /**
@@ -285,7 +347,7 @@ export default class Ratio {
    * @returns {Ratio} this ^ n
    */
   pow(n, precision = 20) {
-    return Ratio.fromNumber(this.toFixed(precision) ** n.toFixed(precision));
+    return Ratio.fromNumber(this.toValue(precision) ** n.toValue(precision));
   }
 
   /**
@@ -296,7 +358,7 @@ export default class Ratio {
    * @returns {Ratio} this ^ n
    */
   powFloat(n, precision = 20) {
-    return Ratio.fromNumber(this.toFixed(precision) ** n);
+    return Ratio.fromNumber(this.toValue(precision) ** n);
   }
 
   /**
@@ -321,16 +383,16 @@ export default class Ratio {
    * @returns {Ratio} n ^ this
    */
   powOf(n, precision = 20) {
-    return Ratio.fromNumber(n ** this.toFixed(precision));
+    return Ratio.fromNumber(n ** this.toValue(precision));
   }
 
   /**
-   * @param {float} base 
+   * @param {float} base
    * @returns {Ratio} log_base(this)
    */
   log(base = Math.E) {
-    const value = Math.log(Number(this.numerator) / Number(this.denominator));
-    return base === Math.E ? Ratio.fromNumber(value) : Ratio.fromNumber(value / Math.log(base))
+    const value = Math.log(this.toValue());
+    return base === Math.E ? Ratio.fromNumber(value) : Ratio.fromNumber(value / Math.log(base));
   }
 
   /**
@@ -369,7 +431,7 @@ export default class Ratio {
    * @return {Ratio} 1 / this
    */
   invert() {
-    return simplify(this.denominator, this.numerator);
+    return new Ratio(this.denominator, this.numerator);
   }
 
   /**
@@ -397,13 +459,34 @@ export default class Ratio {
    * Converts the ratio back into a floating point number.
    * @returns {number} A floating point representation of the ratio.
    */
-  toValue() {
-    const intPart = this.numerator / this.denominator;
-    return (
-      Number(intPart) +
-      Number(this.numerator - intPart * this.denominator) / Number(this.denominator)
-    );
+  toValue(precision = 60) {
+    if (
+      (this.numerator < 0 && this.denominator > 0) ||
+      (this.numerator > 0 && this.denominator < 0)
+    ) {
+      return -this.abs().toValue(precision);
+    }
+    let intPart = this.numerator / this.denominator;
+    const decimalPartExtra =
+      (this.numerator * exp10(precision + 1)) / this.denominator - intPart * exp10(precision + 1);
+    let decimalPart = decimalPartExtra / 10n;
+    if (decimalPartExtra % 10n > 4n) {
+      if (decimalPart === BigInt("9".repeat(precision))) {
+        intPart += BigInt(1);
+        decimalPart = 0;
+      } else {
+        decimalPart++;
+      }
+    }
+    return Number(intPart) + Number(decimalPart) / 10 ** precision;
   }
+  // toValue() {
+  //   const intPart = this.numerator / this.denominator;
+  //   return (
+  //     Number(intPart) +
+  //     Number(this.numerator - intPart * this.denominator) / Number(this.denominator)
+  //   );
+  // }
 
   /**
    * To String.
@@ -458,7 +541,10 @@ export default class Ratio {
    * @returns {string}
    */
   toFixed(n = 20) {
-    if (simplify(this.numerator, this.denominator).numerator < 0) {
+    if (
+      (this.numerator < 0 && this.denominator > 0) ||
+      (this.numerator > 0 && this.denominator < 0)
+    ) {
       return "-" + this.abs().toFixed(n);
     }
     if (this.isInfinity()) {
@@ -472,8 +558,8 @@ export default class Ratio {
     // (this.numerator * exp10(Number(n))) / this.denominator - intPart * exp10(Number(n));
     const decimalPartExtra =
       (this.numerator * exp10(n + 1)) / this.denominator - intPart * exp10(n + 1);
-    let decimalPart = decimalPartExtra / BigInt(10);
-    if (decimalPartExtra % BigInt(10) > BigInt(4)) {
+    let decimalPart = decimalPartExtra / 10n;
+    if (decimalPartExtra % 10n > 4n) {
       if (decimalPart === BigInt("9".repeat(n))) {
         intPart += BigInt(1);
         decimalPart = 0;
@@ -486,7 +572,7 @@ export default class Ratio {
 
   decimalCount() {
     // Convert to String
-    const numberAsString = Number(this.toFixed(20)).toString();
+    const numberAsString = this.toValue().toString();
     // String Contains Decimal
     if (numberAsString.includes(".")) {
       return numberAsString.split(".")[1].length;

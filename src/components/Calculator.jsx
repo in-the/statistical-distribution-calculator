@@ -128,7 +128,7 @@ function ParameterInput({
               <span className="r-code" onClick={(e) => copyText(e, quantileCode)}>
                 {quantileCode}
               </span>
-              {quantile ? " = " : ""}
+              {typeof quantile !== "undefined" ? " = " : ""}
             </td>
             <td>{quantile}</td>
           </tr>

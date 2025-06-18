@@ -125,7 +125,9 @@ function exp10(n) {
 
 export default class Ratio {
   static ZERO = Ratio.fromInt(0);
+  static HALF = new Ratio(1n, 2n)
   static ONE = Ratio.fromInt(1);
+  static TWO = Ratio.fromInt(2)
   static E = Ratio.fromNumber(Math.E);
   static PI = Ratio.fromNumber(Math.PI);
   static INFINITY = new Ratio(1n, 0n);

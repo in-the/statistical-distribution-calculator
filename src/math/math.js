@@ -45,7 +45,7 @@ export function permutation(totalNumber, chosenNumber) {
  * @returns {function} (Ratio x) => Ratio f'(x)
  */
 export function differentiate(func, change = Ratio.fromNumber(0.001)) {
-  const twoChange = Ratio.fromInt(2).times(change);
+  const twoChange = Ratio.TWO.times(change);
   return (x) =>
     func(x.add(twoChange))
       .negative()
@@ -85,7 +85,7 @@ export function inverse(func, estimate = Ratio.ZERO) {
       .subtract(
         differentiateOrder(func, 2)(estimate)
           .divideBy(firstOrder.powInt(3))
-          .divideBy(Ratio.fromInt(2))
+          .divideBy(Ratio.TWO)
           .times(difference.powInt(2))
       )
       .add(
@@ -117,7 +117,7 @@ export function definiteIntegral(func, min, max, intervals = 10) {
     x = x.add(increment), counter++
   ) {
     cumulative = cumulative.add(
-      counter % 3 ? func(x).times(Ratio.fromInt(3)) : func(x).times(Ratio.fromInt(2))
+      counter % 3 ? func(x).times(Ratio.fromInt(3)) : func(x).times(Ratio.TWO)
     );
   }
   return cumulative
@@ -145,7 +145,6 @@ export function improperIntegral(
   epsilon = Ratio.fromNumber(1e-10)
 ) {
   let cumulative = Ratio.ZERO;
-  const TWO = Ratio.fromInt(2);
   const TWELVE = Ratio.fromInt(12);
   let previousX = min;
   let previousY = func(min);
@@ -158,7 +157,10 @@ export function improperIntegral(
     nextX = x.add(interval);
     nextY = func(nextX);
 
-    const trapezoidApproximation = x.subtract(previousX).times(y.add(previousY)).divideBy(TWO);
+    const trapezoidApproximation = x
+      .subtract(previousX)
+      .times(y.add(previousY))
+      .divideBy(Ratio.TWO);
     const correctionApproximation = nextX
       .subtract(x)
       .times(y.subtract(previousY))
@@ -198,8 +200,8 @@ export function newtonRaphson(
   derivative = undefined // optional: df/dx; if not provided, finite diff is used
 ) {
   let x = initialGuess;
-  const h = Ratio.fromNumber(1e-6)
-  const h2 = Ratio.fromNumber(2e-6)
+  const h = Ratio.fromNumber(1e-6);
+  const h2 = Ratio.fromNumber(2e-6);
 
   for (let i = 0; i < maxIter; i++) {
     let fx = func(x);
@@ -209,12 +211,14 @@ export function newtonRaphson(
     if (derivative) {
       dfx = derivative(x);
     } else {
-      dfx = (func(x.add(h)).subtract(func(x.subtract(h)))).divideBy(h2);
+      dfx = func(x.add(h))
+        .subtract(func(x.subtract(h)))
+        .divideBy(h2);
     }
 
     if (dfx.equals(Ratio.ZERO)) break;
 
-    x = x.subtract(fx.divideBy(dfx))
+    x = x.subtract(fx.divideBy(dfx));
 
     // Clamp to bounds
     x = x.max(lowerBound).min(upperBound);
@@ -251,9 +255,9 @@ function gammaLanczos(z) {
     a = p[i].divideBy(z.add(Ratio.fromInt(i))).add(a);
   }
 
-  z = z.add(Ratio.fromNumber(0.5));
+  z = z.add(Ratio.HALF);
   const t = z.add(g);
-  return Ratio.PI.times(Ratio.fromInt(2))
+  return Ratio.PI.times(Ratio.TWO)
     .powFloat(0.5)
     .times(t.pow(z))
     .times(Ratio.E.pow(t.negative()))
@@ -353,7 +357,7 @@ function lowerIncompleteGammaContinuedFraction(s, x, tolerance, maxIter) {
   for (let n = 1; n < maxIter; n++) {
     const N = Ratio.fromInt(n);
     const a = s.subtract(N).times(N);
-    const b = Ratio.fromInt(2).times(N).add(b0);
+    const b = Ratio.TWO.times(N).add(b0);
 
     C = a.divideBy(C).add(b);
     if (C.abs().lt(tiny)) C = tiny;
@@ -532,17 +536,16 @@ export function regularisedIncompleteBeta(x, a, b) {
   if (x.lte(Ratio.ZERO)) return Ratio.ZERO;
   if (x.gte(Ratio.ONE)) return Ratio.ONE;
 
-
-  if (a.addOne().divideBy(a.add(b).add(Ratio.fromInt(2))).gte(x)){
-  const front = a
-    .times(x.log())
-    .add(b.times(Ratio.ONE.subtract(x).log()))
-    .subtract(logBeta(a, b))
-    .powOf(Math.E)
-    .divideBy(a);
+  if (a.addOne().divideBy(a.add(b).add(Ratio.TWO)).gte(x)) {
+    const front = a
+      .times(x.log())
+      .add(b.times(Ratio.ONE.subtract(x).log()))
+      .subtract(logBeta(a, b))
+      .powOf(Math.E)
+      .divideBy(a);
     return betaContinuedFraction(x, a, b).times(front);
   } else {
-    return Ratio.ONE.subtract(regularisedIncompleteBeta(Ratio.ONE.subtract(x), b, a))
+    return Ratio.ONE.subtract(regularisedIncompleteBeta(Ratio.ONE.subtract(x), b, a));
   }
 }
 
@@ -554,11 +557,7 @@ export function regularisedIncompleteBeta(x, a, b) {
  * @param {int} maxIter
  * @returns {Ratio}
  */
-export function regularisedIncompleteBetaInverse(
-  p,
-  a,
-  b,
-) {
+export function regularisedIncompleteBetaInverse(p, a, b) {
   if (p.lte(Ratio.ZERO)) return Ratio.ZERO;
   if (p.gte(Ratio.ONE)) return Ratio.ONE;
   return newtonRaphson(
@@ -566,5 +565,5 @@ export function regularisedIncompleteBetaInverse(
     a.add(b).divide(a),
     Ratio.ZERO,
     Ratio.ONE
-  )
+  );
 }

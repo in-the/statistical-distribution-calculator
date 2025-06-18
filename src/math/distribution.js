@@ -1799,8 +1799,8 @@ class TDistribution extends ContinuousDistribution {
     super();
     this.df = Ratio.fromNumber(df);
     this.dfHalf = Ratio.fromNumber(df).divideBy(Ratio.TWO);
-    this.exponent = this.df.addOne().times(this.half).negative();
-    this.correctionFactor = gamma(this.df.addOne().times(this.half))
+    this.exponent = this.df.addOne().times(Ratio.HALF).negative();
+    this.correctionFactor = gamma(this.df.addOne().times(Ratio.HALF))
       .divideBy(Ratio.PI.times(this.df).powFloat(0.5))
       .divideBy(gamma(this.dfHalf));
   }
@@ -1855,7 +1855,7 @@ class TDistribution extends ContinuousDistribution {
     const x = regularisedIncompleteBetaInverse(
       Ratio.ONE.subtract(p).times(Ratio.TWO),
       this.dfHalf,
-      this.half
+      Ratio.HALF
     );
     return this.df.divideBy(x).subtract(this.df).powFloat(0.5).toValue();
   }
